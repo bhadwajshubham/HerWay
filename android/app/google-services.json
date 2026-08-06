@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "399711586983",
+    "project_id": "herway-app-f6e0f",
+    "storage_bucket": "herway-app-f6e0f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:399711586983:android:466ea8ef6f39cb4d5da982",
+        "android_client_info": {
+          "package_name": "com.herway.her_way"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDORX_fT3EZ6jFL7NY1wyPMRRk-dHSzW-Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

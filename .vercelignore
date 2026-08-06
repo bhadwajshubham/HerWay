@@ -1,0 +1,11 @@
+# Generated or platform-specific files are not needed for the Vercel Flutter build.
+build/
+.dart_tool/
+.idea/
+android/
+ios/
+linux/
+macos/
+windows/
+test/
+flutter_01.png
