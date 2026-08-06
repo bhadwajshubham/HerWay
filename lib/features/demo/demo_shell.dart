@@ -157,7 +157,7 @@ class DemoHomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Hello, Shreya 👋',
+              'Hello, Udita 👋',
               style: TextStyle(
                 color: isDark ? Colors.white70 : AppColors.appleTextSecondary,
                 fontSize: 16,
@@ -665,7 +665,7 @@ class DemoProfileScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Shreya Sharma',
+                      'Udita',
                       style: TextStyle(
                         color: theme.colorScheme.onSurface,
                         fontSize: 18,
