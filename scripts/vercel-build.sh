@@ -42,6 +42,8 @@ if [[ ! -x "${FLUTTER_DIR}/bin/flutter" ]]; then
 fi
 
 export PATH="${FLUTTER_DIR}/bin:${PATH}"
+git config --global --add safe.directory "*" || true
+git config --global --add safe.directory "${FLUTTER_DIR}" || true
 flutter config --no-analytics --enable-web
 flutter pub get
 flutter build web --release \
