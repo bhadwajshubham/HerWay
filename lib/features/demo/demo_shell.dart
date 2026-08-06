@@ -1,28 +1,87 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/app_theme.dart';
+import '../auth/login_screen.dart';
 import '../safety/safety_screen.dart';
 
 /// Offline, data-free preview for sharing the interface before backend setup.
-class DemoShell extends StatefulWidget {
+class DemoShell extends ConsumerStatefulWidget {
   const DemoShell({super.key});
 
   @override
-  State<DemoShell> createState() => _DemoShellState();
+  ConsumerState<DemoShell> createState() => _DemoShellState();
 }
 
-class _DemoShellState extends State<DemoShell> {
+class _DemoShellState extends ConsumerState<DemoShell> {
   int _index = 0;
 
   @override
   Widget build(BuildContext context) {
-    const pages = [
-      DemoHomeScreen(),
-      DemoDriverScreen(),
-      SafetyScreen(),
-      DemoProfileScreen(),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final pages = [
+      const DemoHomeScreen(),
+      const DemoDriverScreen(),
+      const SafetyScreen(),
+      const LoginScreen(),
+      const DemoProfileScreen(),
     ];
+
+    final roleLabel = _index == 1 ? 'DRIVER MODE' : 'RIDER MODE';
+
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 44,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.herOrange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.herOrange.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.admin_panel_settings_rounded,
+                    color: AppColors.herOrange,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    roleLabel,
+                    style: const TextStyle(
+                      color: AppColors.herOrange,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: isDark ? AppColors.softWhite : AppColors.appleTextPrimary,
+            ),
+            onPressed: () =>
+                ref.read(themeNotifierProvider.notifier).toggleTheme(),
+            tooltip: 'Toggle Theme',
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Banner(
         message: 'UI DEMO',
         location: BannerLocation.topEnd,
@@ -32,6 +91,7 @@ class _DemoShellState extends State<DemoShell> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (value) => setState(() => _index = value),
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_rounded),
@@ -44,6 +104,10 @@ class _DemoShellState extends State<DemoShell> {
           BottomNavigationBarItem(
             icon: Icon(Icons.shield_rounded),
             label: 'Safety',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.lock_outline_rounded),
+            label: 'Auth Demo',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_rounded),
@@ -60,8 +124,11 @@ class DemoHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.charcoal,
+      backgroundColor: isDark ? AppColors.charcoal : AppColors.appleBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: const Text(
@@ -71,21 +138,30 @@ class DemoHomeScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 20),
-            child: Icon(Icons.notifications_none_rounded),
+            padding: const EdgeInsets.only(right: 20),
+            child: Icon(
+              Icons.notifications_none_rounded,
+              color: isDark ? AppColors.softWhite : AppColors.appleTextPrimary,
+            ),
           ),
         ],
       ),
       body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Hello, Shreya 👋',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
+              style: TextStyle(
+                color: isDark ? Colors.white70 : AppColors.appleTextSecondary,
+                fontSize: 16,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -105,10 +181,10 @@ class DemoHomeScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 26),
-            const Text(
+            Text(
               'Quick destinations',
               style: TextStyle(
-                color: AppColors.softWhite,
+                color: isDark ? AppColors.softWhite : AppColors.appleTextPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -143,17 +219,20 @@ class DemoHomeScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.slate,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : AppColors.appleBorder,
+                ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.shield_outlined,
                     color: AppColors.herOrange,
                     size: 34,
                   ),
-                  SizedBox(width: 14),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,15 +240,20 @@ class DemoHomeScreen extends StatelessWidget {
                         Text(
                           'Your Safety, Our Priority',
                           style: TextStyle(
-                            color: AppColors.softWhite,
+                            color: theme.colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                             fontSize: 17,
                           ),
                         ),
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         Text(
                           'Verified partners and live trip sharing for every ride.',
-                          style: TextStyle(color: Colors.white60, fontSize: 12),
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -395,54 +479,206 @@ class _DemoDriverScreenState extends State<DemoDriverScreen> {
   bool _accepted = false;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.charcoal,
-    appBar: AppBar(title: const Text('HerWay Driver Partner')),
-    body: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.charcoal : AppColors.appleBackground,
+      appBar: AppBar(title: const Text('HerWay Driver Partner')),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : AppColors.appleBorder,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Today's Earnings",
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '₹1,840',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Rides Completed',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        '7 rides',
+                        style: TextStyle(
+                          color: AppColors.herOrange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              'Nearby Ride Dispatches',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : AppColors.appleBorder,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ananya S.',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Hitec City Metro → Gachibowli',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.7,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _accepted ? 'Ride accepted for demo' : '₹112 • 4.2 km away',
+                    style: const TextStyle(color: AppColors.herOrange),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => setState(() => _accepted = true),
+                      child: Text(
+                        _accepted ? 'ACCEPTED' : 'ACCEPT RIDE DISPATCH',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DemoProfileScreen extends ConsumerWidget {
+  const DemoProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.charcoal : AppColors.appleBackground,
+      appBar: AppBar(
+        title: const Text('Account & Safety Profile'),
+        actions: [
+          IconButton(
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () =>
+                ref.read(themeNotifierProvider.notifier).toggleTheme(),
+            tooltip: 'Toggle Theme',
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
         children: [
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.slate,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Row(
               children: [
+                const CircleAvatar(
+                  radius: 30,
+                  backgroundColor: AppColors.herOrange,
+                  child: Text(
+                    'S',
+                    style: TextStyle(
+                      color: AppColors.charcoal,
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Today's Earnings",
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      '₹1,840',
+                      'Shreya Sharma',
                       style: TextStyle(
-                        color: AppColors.softWhite,
-                        fontSize: 26,
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
+                    const SizedBox(height: 4),
                     Text(
-                      'Rides Completed',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      '7 rides',
+                      '+91 98765 43210',
                       style: TextStyle(
-                        color: AppColors.herOrange,
-                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                   ],
@@ -451,147 +687,46 @@ class _DemoDriverScreenState extends State<DemoDriverScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          const Text(
-            'Nearby Ride Dispatches',
+          Text(
+            'Safety Contacts',
             style: TextStyle(
-              color: AppColors.softWhite,
+              color: theme.colorScheme.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.slate,
-              borderRadius: BorderRadius.circular(20),
+          const SizedBox(height: 12),
+          ListTile(
+            leading: const Icon(Icons.shield_outlined, color: AppColors.herOrange),
+            title: Text(
+              'Priya Sharma',
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ananya S.',
-                  style: TextStyle(
-                    color: AppColors.softWhite,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Hitec City Metro → Gachibowli',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _accepted ? 'Ride accepted for demo' : '₹112 • 4.2 km away',
-                  style: const TextStyle(color: AppColors.herOrange),
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => setState(() => _accepted = true),
-                    child: Text(
-                      _accepted ? 'ACCEPTED' : 'ACCEPT RIDE DISPATCH',
-                    ),
-                  ),
-                ),
-              ],
+            subtitle: Text(
+              'Emergency contact',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          Divider(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+          ),
+          ListTile(
+            leading: const Icon(Icons.phone_outlined, color: AppColors.herOrange),
+            title: Text(
+              '+91 98765 43210',
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+            subtitle: Text(
+              'Demo profile — changes are not saved',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ),
         ],
       ),
-    ),
-  );
-}
-
-class DemoProfileScreen extends StatelessWidget {
-  const DemoProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.charcoal,
-    appBar: AppBar(title: const Text('Account & Safety Profile')),
-    body: ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.slate,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(
-            children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: AppColors.herOrange,
-                child: Text(
-                  'S',
-                  style: TextStyle(
-                    color: AppColors.charcoal,
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Shreya Sharma',
-                    style: TextStyle(
-                      color: AppColors.softWhite,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '+91 98765 43210',
-                    style: TextStyle(color: Colors.white60),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 28),
-        const Text(
-          'Safety Contacts',
-          style: TextStyle(
-            color: AppColors.softWhite,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        const ListTile(
-          leading: Icon(Icons.shield_outlined, color: AppColors.herOrange),
-          title: Text(
-            'Priya Sharma',
-            style: TextStyle(color: AppColors.softWhite),
-          ),
-          subtitle: Text(
-            'Emergency contact',
-            style: TextStyle(color: Colors.white60),
-          ),
-        ),
-        const Divider(color: Colors.white12),
-        const ListTile(
-          leading: Icon(Icons.phone_outlined, color: AppColors.herOrange),
-          title: Text(
-            '+91 98765 43210',
-            style: TextStyle(color: AppColors.softWhite),
-          ),
-          subtitle: Text(
-            'Demo profile — changes are not saved',
-            style: TextStyle(color: Colors.white60),
-          ),
-        ),
-      ],
-    ),
-  );
+    );
+  }
 }
