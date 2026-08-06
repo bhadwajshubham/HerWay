@@ -61,59 +61,61 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.85,
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-        child: Column(
-          children: [
-            const CircleAvatar(
-              radius: 44,
-              backgroundColor: AppColors.slate,
-              child: Icon(Icons.person, size: 50, color: Colors.white70),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Mom (Home)',
-              style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Incoming Fake Safety Call...',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Column(
-                    children: const [
-                      CircleAvatar(
-                        radius: 34,
-                        backgroundColor: Colors.redAccent,
-                        child: Icon(Icons.call_end, color: Colors.white, size: 30),
-                      ),
-                      SizedBox(height: 8),
-                      Text('Decline', style: TextStyle(color: Colors.white70)),
-                    ],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const CircleAvatar(
+                radius: 44,
+                backgroundColor: AppColors.slate,
+                child: Icon(Icons.person, size: 50, color: Colors.white70),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Mom (Home)',
+                style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Incoming Fake Safety Call...',
+                style: TextStyle(color: Colors.white54, fontSize: 14),
+              ),
+              const SizedBox(height: 80),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Column(
+                      children: const [
+                        CircleAvatar(
+                          radius: 34,
+                          backgroundColor: Colors.redAccent,
+                          child: Icon(Icons.call_end, color: Colors.white, size: 30),
+                        ),
+                        SizedBox(height: 8),
+                        Text('Decline', style: TextStyle(color: Colors.white70)),
+                      ],
+                    ),
                   ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Column(
-                    children: const [
-                      CircleAvatar(
-                        radius: 34,
-                        backgroundColor: Colors.green,
-                        child: Icon(Icons.call, color: Colors.white, size: 30),
-                      ),
-                      SizedBox(height: 8),
-                      Text('Accept', style: TextStyle(color: Colors.white70)),
-                    ],
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Column(
+                      children: const [
+                        CircleAvatar(
+                          radius: 34,
+                          backgroundColor: Colors.green,
+                          child: Icon(Icons.call, color: Colors.white, size: 30),
+                        ),
+                        SizedBox(height: 8),
+                        Text('Accept', style: TextStyle(color: Colors.white70)),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 40),
-          ],
+                ],
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );

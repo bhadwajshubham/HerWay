@@ -163,51 +163,59 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildQuickAction(BuildContext context, bool isDarkMode, IconData icon, String title, String subtitle) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const MapScreen()),
-        );
-      },
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: isDarkMode ? AppColors.slate : AppColors.appleCard,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDarkMode ? Colors.white10 : AppColors.appleBorder,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(((isDarkMode ? 0.15 : 0.03) * 255).round()),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MapScreen()),
+          );
+        },
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isDarkMode ? AppColors.slate : AppColors.appleCard,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDarkMode ? Colors.white10 : AppColors.appleBorder,
                 ),
-              ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(((isDarkMode ? 0.15 : 0.03) * 255).round()),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: AppColors.herOrange, size: 26),
             ),
-            child: Icon(icon, color: AppColors.herOrange, size: 26),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-          if (subtitle.isNotEmpty)
+            const SizedBox(height: 8),
             Text(
-              subtitle,
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                color: isDarkMode ? Colors.white38 : AppColors.appleTextSecondary,
-                fontSize: 11,
+                color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
-        ],
+            if (subtitle.isNotEmpty)
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white38 : AppColors.appleTextSecondary,
+                  fontSize: 11,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -223,7 +231,7 @@ class HomeScreen extends ConsumerWidget {
         ),
         boxShadow: [
           BoxShadow(
-                      color: Colors.black.withAlpha(((isDarkMode ? 0.2 : 0.04) * 255).round()),
+            color: Colors.black.withAlpha(((isDarkMode ? 0.2 : 0.04) * 255).round()),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -282,33 +290,38 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildToolIcon(bool isDarkMode, IconData icon, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDarkMode ? AppColors.slate : AppColors.appleSlate,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isDarkMode ? Colors.white10 : AppColors.appleBorder,
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDarkMode ? AppColors.slate : AppColors.appleSlate,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDarkMode ? Colors.white10 : AppColors.appleBorder,
+              ),
+            ),
+            child: Icon(
+              icon, 
+              color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary, 
+              size: 22,
             ),
           ),
-          child: Icon(
-            icon, 
-            color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary, 
-            size: 22,
+          const SizedBox(height: 8),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white70 : AppColors.appleTextSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: isDarkMode ? Colors.white70 : AppColors.appleTextSecondary,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

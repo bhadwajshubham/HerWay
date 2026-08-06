@@ -227,24 +227,35 @@ class _QuickDestination extends StatelessWidget {
   final String eta;
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: AppColors.slate,
-          borderRadius: BorderRadius.circular(18),
+  Widget build(BuildContext context) => Expanded(
+    child: Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: AppColors.slate,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Icon(icon, color: AppColors.herOrange),
         ),
-        child: Icon(icon, color: AppColors.herOrange),
-      ),
-      const SizedBox(height: 7),
-      Text(
-        label,
-        style: const TextStyle(color: AppColors.softWhite, fontSize: 12),
-      ),
-      if (eta.isNotEmpty)
-        Text(eta, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-    ],
+        const SizedBox(height: 7),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.softWhite, fontSize: 12),
+        ),
+        if (eta.isNotEmpty)
+          Text(
+            eta,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white38, fontSize: 10),
+          ),
+      ],
+    ),
   );
 }
 
