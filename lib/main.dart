@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/app_config.dart';
 import 'core/main_scaffold.dart';
 import 'features/auth/login_screen.dart';
-import 'features/demo/demo_shell.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 
@@ -66,7 +65,6 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
   }
 
   Future<void> _initializeFirebase() async {
-    if (AppConfig.isDemoMode) return;
     AppConfig.validateFirebase();
     if (Firebase.apps.isNotEmpty) return;
 
@@ -90,7 +88,6 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
         if (snapshot.hasError) {
           return _StartupErrorScreen(error: snapshot.error!, onRetry: _retry);
         }
-        if (AppConfig.isDemoMode) return const DemoShell();
         return const AuthWrapper();
       },
     );
