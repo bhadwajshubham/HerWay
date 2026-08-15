@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,7 +115,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         dropoffLat: widget.dropoffLat,
         dropoffLng: widget.dropoffLng,
         fare: fare,
-        otp: '4821',
+        otp: (Random.secure().nextInt(10000)).toString().padLeft(4, '0'),
         createdAt: DateTime.now(),
       );
 

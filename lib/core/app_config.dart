@@ -20,7 +20,11 @@ class AppConfig {
   static const firebaseStorageBucket = String.fromEnvironment(
     'FIREBASE_STORAGE_BUCKET',
   );
-  static const isDemoMode = false;
+  static const isDemoMode = String.fromEnvironment(
+        'HERWAY_DEMO_MODE',
+        defaultValue: 'false',
+      ) ==
+      'true';
 
   static List<String> get missingFirebaseVariables => [
     if (firebaseApiKey.isEmpty) 'FIREBASE_API_KEY',

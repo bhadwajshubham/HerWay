@@ -5,7 +5,7 @@ set -euo pipefail
 # preview and production builds use the same SDK as local development.
 readonly FLUTTER_VERSION="${FLUTTER_VERSION:-3.44.8}"
 readonly FLUTTER_DIR="/tmp/herway-flutter-${FLUTTER_VERSION}"
-readonly DEMO_MODE="${HERWAY_DEMO_MODE:-true}"
+readonly DEMO_MODE="${HERWAY_DEMO_MODE:-false}"
 
 required_variables=(
   FIREBASE_API_KEY

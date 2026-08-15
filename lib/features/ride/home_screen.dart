@@ -26,7 +26,8 @@ class HomeScreen extends ConsumerWidget {
             Icons.menu_rounded,
             color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary,
           ),
-          onPressed: () {},
+          tooltip: 'Menu',
+          onPressed: () => _showMenu(context),
         ),
         actions: [
           IconButton(
@@ -34,7 +35,8 @@ class HomeScreen extends ConsumerWidget {
               Icons.notifications_none_rounded,
               color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary,
             ),
-            onPressed: () {},
+            tooltip: 'Notifications',
+            onPressed: () => _showNotifications(context),
           ),
         ],
       ),
@@ -130,8 +132,10 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 28),
             
             // Quick Action Destinations Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              spacing: 8,
+              runSpacing: 12,
+              alignment: WrapAlignment.spaceBetween,
               children: [
                 _buildQuickAction(context, isDarkMode, Icons.home_rounded, 'Home', '12 min'),
                 _buildQuickAction(context, isDarkMode, Icons.work_rounded, 'Work', '25 min'),
@@ -162,8 +166,54 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  void _showMenu(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('Settings'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.help_outline_rounded),
+              title: const Text('Help & support'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNotifications(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => const SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 8, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Notifications', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              SizedBox(height: 20),
+              Text('You’re all caught up.', style: TextStyle(color: Colors.grey)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuickAction(BuildContext context, bool isDarkMode, IconData icon, String title, String subtitle) {
-    return Expanded(
+    return SizedBox(
+      width: 60,
       child: GestureDetector(
         onTap: () {
           Navigator.push(
@@ -181,7 +231,7 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: isDarkMode ? AppColors.slate : AppColors.appleCard,
                 borderRadius: BorderRadius.circular(20),

@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -17,24 +20,59 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localProperties.load(FileInputStream(localPropertiesFile))
+    }
+    val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
+        ?: System.getenv("MAPS_API_KEY")
+        ?: ""
+
+    val signingProperties = Properties()
+    val signingPropertiesFile = rootProject.file("key.properties")
+    if (signingPropertiesFile.exists()) {
+        signingProperties.load(FileInputStream(signingPropertiesFile))
+    }
+    val keystoreFile = signingProperties.getProperty("storeFile")
+        ?: System.getenv("ANDROID_KEYSTORE_PATH")
+    val keystorePassword = signingProperties.getProperty("storePassword")
+        ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
+    val keyAlias = signingProperties.getProperty("keyAlias")
+        ?: System.getenv("ANDROID_KEY_ALIAS")
+    val keyPassword = signingProperties.getProperty("keyPassword")
+        ?: System.getenv("ANDROID_KEY_PASSWORD")
+
+    if (keystoreFile != null && keystorePassword != null &&
+        keyAlias != null && keyPassword != null) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(keystoreFile)
+                storePassword = keystorePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.herway.her_way"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (keystoreFile != null && keystorePassword != null &&
+                keyAlias != null && keyPassword != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
+
 }
 
 kotlin {

@@ -1,5 +1,6 @@
-# Miscellaneous
-*.class
+# Android local configuration
+local.properties
+key.properties
 *.log
 *.pyc
 *.swp

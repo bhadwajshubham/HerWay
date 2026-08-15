@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -73,12 +74,15 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
   }
 
   Future<void> _initializeFirebase() async {
-    AppConfig.validateFirebase();
+    if (kIsWeb) AppConfig.validateFirebase();
     if (Firebase.apps.isNotEmpty) return;
 
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(const Duration(seconds: 20));
+    final initialization = kIsWeb
+        ? Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform,
+          )
+        : Firebase.initializeApp();
+    await initialization.timeout(const Duration(seconds: 20));
   }
 
   void _retry() {

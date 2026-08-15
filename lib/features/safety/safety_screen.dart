@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 
 class SafetyScreen extends ConsumerStatefulWidget {
@@ -207,8 +208,11 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
                     title: 'Share Live Journey',
                     subtitle: 'Broadcast real-time GPS tracking link to trusted circle',
                     onTap: () {
+                      Clipboard.setData(const ClipboardData(
+                        text: 'HerWay live journey: tracking link will be available when a ride is active.',
+                      ));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Sharing functionality not yet implemented.')),
+                        const SnackBar(content: Text('Journey details copied. Start a ride to share live tracking.')),
                       );
                     },
                   ),

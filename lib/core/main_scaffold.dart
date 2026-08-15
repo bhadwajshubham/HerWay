@@ -32,7 +32,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       stream: ref.read(userServiceProvider).streamUserProfile(user.uid),
       builder: (context, snapshot) {
         final isDriver = snapshot.data?.isDriver ?? false;
-        
+
         final pages = [
           const HomeScreen(),
           const ActivityScreen(),
@@ -49,13 +49,24 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
           const BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Account'),
         ];
 
+        // A profile stream can change the number of tabs (for example when a
+        // user becomes a driver). Keep the selected tab valid after that
+        // change instead of showing a different page than the selected item.
+        final selectedIndex =
+            _currentIndex.clamp(0, pages.length - 1).toInt();
+        if (_currentIndex != selectedIndex) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _currentIndex = selectedIndex);
+          });
+        }
+
         return Scaffold(
           body: IndexedStack(
-            index: _currentIndex,
+            index: selectedIndex,
             children: pages,
           ),
           bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
+            currentIndex: selectedIndex,
             onTap: (index) => setState(() => _currentIndex = index),
             type: BottomNavigationBarType.fixed,
             backgroundColor: isDarkMode ? AppColors.charcoal : AppColors.appleCard,

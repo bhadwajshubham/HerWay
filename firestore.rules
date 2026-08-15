@@ -22,7 +22,13 @@ service cloud.firestore {
 
     // User profiles: Only the user can read/write their own profile
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && request.resource.data.isDriver == false
+        && request.resource.data.isVerified == false;
+      allow update: if isOwner(userId)
+        && request.resource.data.isDriver == resource.data.isDriver
+        && request.resource.data.isVerified == resource.data.isVerified;
     }
 
     // Rides: 
@@ -34,7 +40,8 @@ service cloud.firestore {
       // Only authenticated users can create a ride for themselves
       allow create: if isAuthenticated() && 
         request.resource.data.riderId == request.auth.uid &&
-        request.resource.data.status == 'requested';
+        request.resource.data.status == 'requested' &&
+        request.resource.data.driverId == null;
       
       // Access control for reading ride data
       allow read: if isAuthenticated() && (
@@ -46,13 +53,20 @@ service cloud.firestore {
       // Access control for updating ride state
       allow update: if isAuthenticated() && (
         // Rider can cancel their own requested ride
-        (resource.data.riderId == request.auth.uid && request.resource.data.status == 'cancelled') ||
+        (resource.data.riderId == request.auth.uid &&
+          resource.data.status == 'requested' &&
+          request.resource.data.status == 'cancelled') ||
         
         // Driver can accept a requested ride (if they are a verified driver)
-        (resource.data.status == 'requested' && request.resource.data.status == 'accepted' && isDriver()) ||
+        (resource.data.status == 'requested' &&
+          request.resource.data.status == 'accepted' &&
+          request.resource.data.driverId == request.auth.uid &&
+          isDriver()) ||
         
         // Assigned driver can update status (in_transit, completed)
-        (resource.data.driverId == request.auth.uid)
+        (resource.data.driverId == request.auth.uid &&
+          request.resource.data.driverId == resource.data.driverId &&
+          request.resource.data.status in ['in_transit', 'completed', 'cancelled'])
       );
       
       allow delete: if false; // Audit trail preservation
