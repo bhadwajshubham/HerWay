@@ -27,6 +27,7 @@ android {
     }
     val mapsApiKey = localProperties.getProperty("MAPS_API_KEY")
         ?: System.getenv("MAPS_API_KEY")
+        ?: System.getenv("GOOGLE_MAPS_API_KEY")
         ?: ""
 
     val signingProperties = Properties()

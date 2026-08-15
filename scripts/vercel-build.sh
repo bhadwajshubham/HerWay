@@ -17,18 +17,16 @@ required_variables=(
   GOOGLE_MAPS_API_KEY
 )
 
-if [[ "${DEMO_MODE}" != "true" ]]; then
-  missing_variables=()
-  for variable_name in "${required_variables[@]}"; do
-    if [[ -z "${!variable_name:-}" ]]; then
-      missing_variables+=("${variable_name}")
-    fi
-  done
-
-  if (( ${#missing_variables[@]} > 0 )); then
-    printf 'Missing required Vercel environment variables: %s\n' "${missing_variables[*]}" >&2
-    exit 1
+missing_variables=()
+for variable_name in "${required_variables[@]}"; do
+  if [[ -z "${!variable_name:-}" ]]; then
+    missing_variables+=("${variable_name}")
   fi
+done
+
+if (( ${#missing_variables[@]} > 0 )); then
+  printf 'Missing required Vercel environment variables: %s\n' "${missing_variables[*]}" >&2
+  exit 1
 fi
 
 if [[ ! -x "${FLUTTER_DIR}/bin/flutter" ]]; then
@@ -58,8 +56,4 @@ flutter build web --release \
 # The Maps JavaScript API must be loaded before Flutter creates a GoogleMap.
 # Google Maps browser keys are designed to be visible in clients; restrict this
 # key by HTTP referrer and API in Google Cloud Console.
-if [[ "${DEMO_MODE}" == "true" ]]; then
-  sed -i '/maps.googleapis.com\/maps\/api\/js/d' build/web/index.html
-else
-  sed -i "s|__GOOGLE_MAPS_API_KEY__|${GOOGLE_MAPS_API_KEY}|g" build/web/index.html
-fi
+sed -i "s|__GOOGLE_MAPS_API_KEY__|${GOOGLE_MAPS_API_KEY}|g" build/web/index.html
