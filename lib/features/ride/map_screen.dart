@@ -20,12 +20,12 @@ class MapScreen extends ConsumerStatefulWidget {
 
   const MapScreen({
     super.key,
-    this.pickupAddress = 'Hitec City Metro Station, Hyderabad',
-    this.dropoffAddress = 'Gachibowli DLF Cyber City, Hyderabad',
-    this.pickupLat = 17.4435,
-    this.pickupLng = 78.3772,
-    this.dropoffLat = 17.4400,
-    this.dropoffLng = 78.3489,
+    required this.pickupAddress,
+    required this.dropoffAddress,
+    required this.pickupLat,
+    required this.pickupLng,
+    required this.dropoffLat,
+    required this.dropoffLng,
   });
 
   @override
@@ -143,9 +143,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final grossFare = _grossFare();
     final discount = _introDiscountAmount(grossFare);
     final finalFare = _estimatedFare();
+    
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.charcoal,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           GoogleMap(
@@ -167,15 +169,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppColors.slate,
+                        color: theme.colorScheme.surface,
                         shape: BoxShape.circle,
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 8),
+                        boxShadow: [
+                          BoxShadow(color: theme.shadowColor.withAlpha(50), blurRadius: 8),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back_ios_new,
-                        color: AppColors.softWhite,
+                        color: theme.colorScheme.onSurface,
                         size: 20,
                       ),
                     ),
@@ -186,18 +188,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.slate,
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppColors.herOrange.withAlpha(
-                          (0.3 * 255).round(),
-                        ),
+                        color: theme.colorScheme.primary.withAlpha(100),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'HerWay SafeRide',
                       style: TextStyle(
-                        color: AppColors.softWhite,
+                        color: theme.colorScheme.onSurface,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -215,6 +215,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             child: PointerInterceptor(
               child: _activeRideId == null
                   ? _buildConfirmationSheet(
+                      context,
                       distanceKm: distanceKm,
                       estimatedMinutes: estimatedMinutes,
                       grossFare: grossFare,
@@ -228,10 +229,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         if (activeRide == null) {
                           return Container(
                             padding: const EdgeInsets.all(24),
-                            color: AppColors.charcoal,
-                            child: const Center(
+                            color: theme.scaffoldBackgroundColor,
+                            child: Center(
                               child: CircularProgressIndicator(
-                                color: AppColors.herOrange,
+                                color: theme.colorScheme.primary,
                               ),
                             ),
                           );
@@ -246,26 +247,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  Widget _buildConfirmationSheet({
+  Widget _buildConfirmationSheet(
+    BuildContext context, {
     required double distanceKm,
     required double estimatedMinutes,
     required double grossFare,
     required double discount,
     required double finalFare,
   }) {
+    final theme = Theme.of(context);
+    
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: AppColors.charcoal,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(30),
           topRight: Radius.circular(30),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black54,
+            color: theme.shadowColor.withAlpha(50),
             blurRadius: 20,
-            offset: Offset(0, -5),
+            offset: const Offset(0, -5),
           ),
         ],
       ),
@@ -275,17 +279,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.slate,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.herOrange.withAlpha((0.3 * 255).round()),
+                color: theme.colorScheme.primary.withAlpha(100),
               ),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.directions_car,
-                  color: AppColors.herOrange,
+                  color: theme.colorScheme.primary,
                   size: 36,
                 ),
                 const SizedBox(width: 16),
@@ -293,10 +297,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'HerWay Premium',
                         style: TextStyle(
-                          color: AppColors.softWhite,
+                          color: theme.colorScheme.onSurface,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -305,7 +309,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       Text(
                         '${distanceKm.toStringAsFixed(1)} km trip • ${estimatedMinutes.toStringAsFixed(0)} min ETA',
                         style: TextStyle(
-                          color: Colors.white.withAlpha((0.6 * 255).round()),
+                          color: theme.colorScheme.onSurface.withAlpha(180),
                           fontSize: 12,
                         ),
                       ),
@@ -314,8 +318,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
                 Text(
                   '₹${finalFare.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    color: AppColors.softWhite,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -326,88 +330,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha((0.04 * 255).round()),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white10),
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.colorScheme.onSurface.withAlpha(20),
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _fareRow(
-                  'Base + distance + time + safety fee',
-                  '₹${grossFare.toStringAsFixed(0)}',
-                ),
-                const SizedBox(height: 8),
-                _fareRow('Intro discount', '-₹${discount.toStringAsFixed(0)}'),
-                const SizedBox(height: 8),
-                const Divider(color: Colors.white12),
-                const SizedBox(height: 8),
-                _fareRow(
+                Text(
                   'Payable now',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withAlpha(180),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
                   '₹${finalFare.toStringAsFixed(0)}',
-                  highlight: true,
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.pickupAddress,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(
-                  Icons.arrow_forward_rounded,
-                  color: Colors.white38,
-                  size: 18,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  widget.dropoffAddress,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Icon(
-                    Icons.account_balance_wallet,
-                    color: AppColors.herOrange,
-                    size: 20,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'UPI Fast Pay',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
-              TextButton(
-                onPressed: () {},
-                child: const Text(
-                  'Change',
-                  style: TextStyle(color: AppColors.herOrange),
-                ),
-              ),
-            ],
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -415,18 +366,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             height: 56,
             child: ElevatedButton(
               onPressed: _isBooking ? null : _confirmAndDispatchRide,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.herOrange,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
+              style: theme.elevatedButtonTheme.style,
               child: _isBooking
-                  ? const CircularProgressIndicator(color: AppColors.charcoal)
-                  : const Text(
+                  ? CircularProgressIndicator(color: theme.colorScheme.onPrimary)
+                  : Text(
                       'CONFIRM & BOOK RIDE',
                       style: TextStyle(
-                        color: AppColors.charcoal,
+                        color: theme.colorScheme.onPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -435,30 +381,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _fareRow(String label, String value, {bool highlight = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: highlight ? AppColors.softWhite : Colors.white70,
-            fontSize: highlight ? 14 : 13,
-            fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: highlight ? AppColors.herOrange : Colors.white,
-            fontSize: highlight ? 16 : 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 

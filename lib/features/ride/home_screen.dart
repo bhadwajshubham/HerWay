@@ -168,7 +168,14 @@ class HomeScreen extends ConsumerWidget {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const MapScreen()),
+            MaterialPageRoute(builder: (context) => MapScreen(
+              pickupAddress: 'Current Location',
+              dropoffAddress: title,
+              pickupLat: 17.4435,
+              pickupLng: 78.3772,
+              dropoffLat: 17.4430,
+              dropoffLng: 78.3558,
+            )),
           );
         },
         child: Column(
@@ -330,7 +337,14 @@ class HomeScreen extends ConsumerWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const MapScreen()),
+          MaterialPageRoute(builder: (context) => const MapScreen(
+            pickupAddress: 'Current Location',
+            dropoffAddress: 'Destination',
+            pickupLat: 17.4435,
+            pickupLng: 78.3772,
+            dropoffLat: 17.4430,
+            dropoffLng: 78.3558,
+          )),
         );
       },
       child: Container(

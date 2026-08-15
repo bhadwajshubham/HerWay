@@ -104,6 +104,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(userProfileStreamProvider, (previous, next) {
+      if (next is AsyncData && next.value != null) {
+        _populateData(next.value!);
+      }
+    });
+
     final userAsync = ref.watch(userProfileStreamProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -133,8 +139,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (user == null) {
             return const Center(child: Text('No user profile found.'));
           }
-
-          _populateData(user);
+          
+          if (!_isInitialized) _populateData(user);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),

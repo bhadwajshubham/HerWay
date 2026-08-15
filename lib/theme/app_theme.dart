@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../core/storage_service.dart';
 
 // Riverpod Provider to manage Theme State across the entire application
 final themeNotifierProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
-  return ThemeNotifier();
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return ThemeNotifier(prefs);
 });
 
 class ThemeNotifier extends StateNotifier<ThemeMode> {
-  ThemeNotifier() : super(ThemeMode.dark);
+  final SharedPreferences _prefs;
+  static const _key = 'isDarkMode';
+
+  ThemeNotifier(this._prefs) : super(_loadInitialMode(_prefs));
+
+  static ThemeMode _loadInitialMode(SharedPreferences prefs) {
+    final isDarkMode = prefs.getBool(_key) ?? true; // Default to dark
+    return isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  }
 
   void toggleTheme() {
     state = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    _prefs.setBool(_key, state == ThemeMode.dark);
   }
 
   bool get isDarkMode => state == ThemeMode.dark;

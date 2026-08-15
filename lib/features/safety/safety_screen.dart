@@ -141,7 +141,6 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Big SOS Emergency Trigger Shield
             GestureDetector(
               onTap: _triggerSosAlert,
               child: AnimatedContainer(
@@ -209,7 +208,7 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
                     subtitle: 'Broadcast real-time GPS tracking link to trusted circle',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Live trip link copied to clipboard!')),
+                        const SnackBar(content: Text('Sharing functionality not yet implemented.')),
                       );
                     },
                   ),
@@ -262,7 +261,7 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
                       ],
                     ),
                   ),
-                  Icon(
+                  const Icon(
                     Icons.check_circle_rounded,
                     color: Colors.greenAccent,
                     size: 22,

@@ -4,17 +4,25 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app_config.dart';
 import 'core/main_scaffold.dart';
+import 'core/storage_service.dart';
 import 'features/auth/login_screen.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final sharedPreferences = await SharedPreferences.getInstance();
   ErrorWidget.builder = (details) => const _UnexpectedErrorScreen();
-  runApp(const ProviderScope(child: HerWayApp()));
+  runApp(ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+    ],
+    child: const HerWayApp(),
+  ));
 }
 
 class HerWayApp extends ConsumerWidget {
