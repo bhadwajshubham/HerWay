@@ -51,7 +51,8 @@ flutter build web --release \
   --dart-define="FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID:-}" \
   --dart-define="FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}" \
   --dart-define="FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN:-}" \
-  --dart-define="FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
+  --dart-define="FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}" \
+  --dart-define="GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}"
 
 # The Maps JavaScript API must be loaded before Flutter creates a GoogleMap.
 # Google Maps browser keys are designed to be visible in clients; restrict this

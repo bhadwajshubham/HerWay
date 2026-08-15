@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_theme.dart';
 import '../../models/user_model.dart';
+import '../activity/activity_screen.dart';
 import '../profile/user_service.dart';
 import 'map_screen.dart';
 import 'search_location_screen.dart';
@@ -158,9 +159,54 @@ class HomeScreen extends ConsumerWidget {
             
             // Instant Ride CTA Card
             _buildInstantRideCard(context, isDarkMode),
+
+            const SizedBox(height: 16),
+            _buildActivityShortcut(context, isDarkMode),
             
             const SizedBox(height: 100), // Padding for bottom nav bar
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivityShortcut(BuildContext context, bool isDarkMode) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ActivityScreen()),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDarkMode ? AppColors.slate : AppColors.appleCard,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDarkMode ? Colors.white10 : AppColors.appleBorder,
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.history_rounded, color: AppColors.herOrange),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'View ride activity',
+                  style: TextStyle(
+                    color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: isDarkMode ? Colors.white54 : AppColors.appleTextSecondary,
+              ),
+            ],
+          ),
         ),
       ),
     );

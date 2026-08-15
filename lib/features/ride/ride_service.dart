@@ -65,9 +65,14 @@ class RideService {
     return _firestore
         .collection('rides')
         .where('riderId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((d) => RideModel.fromMap(d.data(), d.id)).toList());
+        .map((snapshot) {
+          final rides = snapshot.docs
+              .map((d) => RideModel.fromMap(d.data(), d.id))
+              .toList();
+          rides.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return rides;
+        });
   }
 
   /// Accept Ride (Driver Side)

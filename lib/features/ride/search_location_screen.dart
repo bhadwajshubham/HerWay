@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 
+import '../../core/app_config.dart';
 import '../../core/location_service.dart';
 import '../../theme/app_theme.dart';
 import 'map_screen.dart';
@@ -59,6 +63,8 @@ class _SearchLocationScreenState extends ConsumerState<SearchLocationScreen> {
   ];
 
   List<Map<String, String>> _filteredPlaces = [];
+  int _searchRequestId = 0;
+  bool _isSearchingOnline = false;
 
   @override
   void initState() {
@@ -80,6 +86,7 @@ class _SearchLocationScreenState extends ConsumerState<SearchLocationScreen> {
 
   void _onSearchChanged() {
     final query = _dropoffController.text.toLowerCase().trim();
+    final requestId = ++_searchRequestId;
     setState(() {
       if (query.isEmpty) {
         _filteredPlaces = _popularPlaces;
@@ -90,10 +97,64 @@ class _SearchLocationScreenState extends ConsumerState<SearchLocationScreen> {
         }).toList();
       }
     });
+    if (query.length >= 3 && _filteredPlaces.isEmpty) {
+      _searchOnline(query, requestId);
+    }
+  }
+
+  Future<void> _searchOnline(String query, int requestId) async {
+    final key = AppConfig.googleMapsApiKey;
+    if (key.isEmpty) return;
+    setState(() => _isSearchingOnline = true);
+    try {
+      final response = await http.get(
+        Uri.https('maps.googleapis.com', '/maps/api/geocode/json', {
+          'address': '$query, Hyderabad',
+          'key': key,
+        }),
+      ).timeout(const Duration(seconds: 8));
+      if (!mounted || requestId != _searchRequestId) return;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final results = data['results'] as List<dynamic>?;
+      if (response.statusCode == 200 &&
+          data['status'] == 'OK' &&
+          results != null &&
+          results.isNotEmpty) {
+        final result = results.first as Map<String, dynamic>;
+        final geometry = result['geometry'] as Map<String, dynamic>;
+        final location = geometry['location'] as Map<String, dynamic>;
+        final place = <String, String>{
+          'title': result['formatted_address'] as String? ?? query,
+          'subtitle': 'Google Maps result',
+          'distance': 'Route',
+          'lat': '${location['lat']}',
+          'lng': '${location['lng']}',
+        };
+        setState(() => _filteredPlaces = [place]);
+      }
+    } catch (_) {
+      // Local suggestions remain available when online search is unavailable.
+    } finally {
+      if (mounted && requestId == _searchRequestId) {
+        setState(() => _isSearchingOnline = false);
+      }
+    }
   }
 
   void _selectLocation(Map<String, String> place, Position? currentLocation) {
     if (_navigating) return;
+    
+    // Validate required coordinates
+    final lat = double.tryParse(place['lat'] ?? '');
+    final lng = double.tryParse(place['lng'] ?? '');
+
+    if (lat == null || lng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not determine location coordinates.')),
+      );
+      return;
+    }
+
     _navigating = true;
 
     final pickupAddress = _pickupController.text.trim().isEmpty
@@ -110,11 +171,11 @@ class _SearchLocationScreenState extends ConsumerState<SearchLocationScreen> {
       MaterialPageRoute(
         builder: (context) => MapScreen(
           pickupAddress: pickupAddress,
-          dropoffAddress: '${place['title']}, ${place['subtitle']}',
+          dropoffAddress: '${place['title']}${place['subtitle'] != null && place['subtitle']!.isNotEmpty ? ', ${place['subtitle']}' : ''}',
           pickupLat: pickupLat,
           pickupLng: pickupLng,
-          dropoffLat: double.tryParse(place['lat'] ?? '') ?? pickupLat,
-          dropoffLng: double.tryParse(place['lng'] ?? '') ?? pickupLng,
+          dropoffLat: lat,
+          dropoffLng: lng,
         ),
       ),
     ).then((_) {
@@ -307,12 +368,22 @@ class _SearchLocationScreenState extends ConsumerState<SearchLocationScreen> {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              itemCount: _filteredPlaces.length,
+              itemCount: _filteredPlaces.length + (_isSearchingOnline ? 1 : 0),
               separatorBuilder: (context, index) => Divider(
                 color: isDarkMode ? Colors.white10 : AppColors.appleBorder,
                 height: 1,
               ),
               itemBuilder: (context, index) {
+                if (index >= _filteredPlaces.length) {
+                  return const ListTile(
+                    leading: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    title: Text('Searching Google Maps…'),
+                  );
+                }
                 final place = _filteredPlaces[index];
                 return ListTile(
                   contentPadding: const EdgeInsets.symmetric(

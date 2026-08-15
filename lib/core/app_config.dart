@@ -20,6 +20,9 @@ class AppConfig {
   static const firebaseStorageBucket = String.fromEnvironment(
     'FIREBASE_STORAGE_BUCKET',
   );
+  static const googleMapsApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_API_KEY',
+  );
   static const isDemoMode = String.fromEnvironment(
         'HERWAY_DEMO_MODE',
         defaultValue: 'false',

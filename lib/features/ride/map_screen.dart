@@ -11,6 +11,7 @@ import '../../models/ride_model.dart';
 import '../../theme/app_theme.dart';
 import '../profile/user_service.dart';
 import 'ride_service.dart';
+import 'route_service.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   final String pickupAddress;
@@ -46,13 +47,74 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   bool _isBooking = false;
   String? _activeRideId;
+  final _routeService = RouteService();
+  GoogleMapController? _mapController;
+  List<LatLng> _routePoints = const [];
+  double? _routeDistanceKm;
+  double? _routeDurationMinutes;
 
   CameraPosition get _initialPosition => CameraPosition(
     target: LatLng(widget.pickupLat, widget.pickupLng),
     zoom: 15.0,
   );
 
+  @override
+  void initState() {
+    super.initState();
+    _loadRoute();
+  }
+
+  Future<void> _loadRoute() async {
+    try {
+      final route = await _routeService.getRoute(
+        pickupLat: widget.pickupLat,
+        pickupLng: widget.pickupLng,
+        dropoffLat: widget.dropoffLat,
+        dropoffLng: widget.dropoffLng,
+      );
+      if (!mounted || route == null) return;
+      setState(() {
+        _routeDistanceKm = route.distanceKm;
+        _routeDurationMinutes = route.durationMinutes;
+        _routePoints = route.points
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
+      });
+      _fitMapToTrip();
+    } catch (_) {
+      // The straight-line estimate remains available when Directions is
+      // unavailable or the key is not enabled for the current platform.
+    }
+  }
+
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+    _fitMapToTrip();
+  }
+
+  void _fitMapToTrip() {
+    final controller = _mapController;
+    if (controller == null || !mounted) return;
+    final points = [
+      LatLng(widget.pickupLat, widget.pickupLng),
+      LatLng(widget.dropoffLat, widget.dropoffLng),
+      ..._routePoints,
+    ];
+    final latitudes = points.map((point) => point.latitude);
+    final longitudes = points.map((point) => point.longitude);
+    final bounds = LatLngBounds(
+      southwest: LatLng(latitudes.reduce(min), longitudes.reduce(min)),
+      northeast: LatLng(latitudes.reduce(max), longitudes.reduce(max)),
+    );
+    try {
+      controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 72));
+    } catch (_) {
+      // The map may not have completed its first layout yet.
+    }
+  }
+
   double _distanceKm() {
+    if (_routeDistanceKm != null) return _routeDistanceKm!;
     return Geolocator.distanceBetween(
           widget.pickupLat,
           widget.pickupLng,
@@ -63,6 +125,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   double _estimatedDurationMinutes(double distanceKm) {
+    if (_routeDurationMinutes != null) return _routeDurationMinutes!;
     final minutes = (distanceKm / _averageSpeedKmh) * 60;
     return minutes < 5 ? 5 : minutes;
   }
@@ -95,12 +158,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final rideService = ref.read(rideServiceProvider);
     final user = FirebaseAuth.instance.currentUser;
 
+    if (user == null) {
+      setState(() => _isBooking = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in before booking a ride.')),
+      );
+      return;
+    }
+
     try {
-      final riderId = user?.uid ?? 'GUEST_USER';
+      final riderId = user.uid;
       final userService = ref.read(userServiceProvider);
-      final userProfile = user != null
-          ? await userService.getUserProfile(user.uid)
-          : null;
+      final userProfile = await userService.getUserProfile(user.uid);
       final fare = _estimatedFare();
 
       final ride = RideModel(
@@ -154,9 +223,49 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         children: [
           GoogleMap(
             initialCameraPosition: _initialPosition,
+            onMapCreated: _onMapCreated,
             zoomControlsEnabled: false,
             myLocationButtonEnabled: false,
             mapToolbarEnabled: false,
+            markers: {
+              Marker(
+                markerId: const MarkerId('pickup'),
+                position: LatLng(widget.pickupLat, widget.pickupLng),
+                infoWindow: InfoWindow(title: widget.pickupAddress),
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueGreen,
+                ),
+              ),
+              Marker(
+                markerId: const MarkerId('dropoff'),
+                position: LatLng(widget.dropoffLat, widget.dropoffLng),
+                infoWindow: InfoWindow(title: widget.dropoffAddress),
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueOrange,
+                ),
+              ),
+            },
+            polylines: _routePoints.length > 1
+                ? {
+                    Polyline(
+                      polylineId: const PolylineId('trip-route'),
+                      points: _routePoints,
+                      color: theme.colorScheme.primary,
+                      width: 5,
+                    ),
+                  }
+                : {
+                    Polyline(
+                      polylineId: const PolylineId('trip-estimate'),
+                      points: [
+                        LatLng(widget.pickupLat, widget.pickupLng),
+                        LatLng(widget.dropoffLat, widget.dropoffLng),
+                      ],
+                      color: theme.colorScheme.primary.withAlpha(180),
+                      width: 4,
+                      patterns: const [PatternItem.dash(16), PatternItem.gap(8)],
+                    ),
+                  },
           ),
           Positioned(
             top: 50,
@@ -506,11 +615,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             width: double.infinity,
             height: 50,
             child: OutlinedButton(
-              onPressed: () {
-                ref
-                    .read(rideServiceProvider)
-                    .updateRideStatus(ride.id, 'cancelled');
-                setState(() => _activeRideId = null);
+              onPressed: () async {
+                try {
+                  await ref
+                      .read(rideServiceProvider)
+                      .updateRideStatus(ride.id, 'cancelled');
+                  if (mounted) setState(() => _activeRideId = null);
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Unable to cancel ride: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.redAccent),

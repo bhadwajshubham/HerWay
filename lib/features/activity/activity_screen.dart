@@ -11,34 +11,70 @@ class ActivityScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('Please sign in to view your activity.')),
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Center(
+          child: Text(
+            'Please sign in to view your activity.',
+            style: theme.textTheme.bodyLarge,
+          ),
+        ),
       );
     }
 
     final rideService = ref.watch(rideServiceProvider);
 
     return Scaffold(
+      backgroundColor: isDarkMode ? AppColors.charcoal : AppColors.appleBackground,
       appBar: AppBar(
-        title: const Text('Activity'),
+        title: Text(
+          'Activity',
+          style: TextStyle(
+            color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       body: StreamBuilder<List<RideModel>>(
         stream: rideService.streamRidesForUser(user.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(color: theme.colorScheme.primary),
+            );
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Unable to load activity. Please try again later.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyLarge,
+                ),
+              ),
+            );
           }
 
           final rides = snapshot.data ?? [];
           if (rides.isEmpty) {
             return Center(
-              child: Text(
-                'No rides yet',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.history_rounded, size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.35)),
+                  const SizedBox(height: 12),
+                  Text('No rides yet', style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your completed and active rides will appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                  ),
+                ],
               ),
             );
           }
@@ -109,7 +145,7 @@ class ActivityScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          r.status,
+                          _formatStatus(r.status),
                           style: TextStyle(
                             color: theme.colorScheme.onSurface.withValues(
                               alpha: 0.6,
@@ -127,5 +163,14 @@ class ActivityScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  String _formatStatus(String status) {
+    return status
+        .split('_')
+        .map((word) => word.isEmpty
+            ? word
+            : '${word[0].toUpperCase()}${word.substring(1)}')
+        .join(' ');
   }
 }
