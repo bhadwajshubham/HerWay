@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import '../../models/user_model.dart';
 import '../../theme/app_theme.dart';
+import '../profile/user_service.dart';
 
 class SafetyScreen extends ConsumerStatefulWidget {
   const SafetyScreen({super.key});
@@ -13,14 +16,20 @@ class SafetyScreen extends ConsumerStatefulWidget {
 class _SafetyScreenState extends ConsumerState<SafetyScreen> {
   bool _isSosTriggered = false;
 
-  void _triggerSosAlert() {
+  void _triggerSosAlert({
+    required String guardianName,
+    required String emergencyPhone,
+  }) {
     setState(() => _isSosTriggered = true);
+    final contactLine = emergencyPhone.isEmpty
+        ? 'No emergency phone is configured yet.'
+        : 'Guardian contact: $guardianName ($emergencyPhone).';
     
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.charcoal,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(
           children: const [
@@ -29,9 +38,9 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
             Text('SOS Emergency Active', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text(
-          'Encrypted live coordinates & audio recording have been broadcasted to your Emergency Guardian Circle.',
-          style: TextStyle(color: Colors.white70, fontSize: 14),
+        content: Text(
+          'SOS preview is active. No SMS, call, location broadcast, or audio recording has been sent yet.\n\n$contactLine',
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
         ),
         actions: [
           TextButton(
@@ -42,16 +51,22 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
             child: const Text('CANCEL ALARM', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Clipboard.setData(const ClipboardData(text: '112'));
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Emergency number 112 copied.')),
+              );
+            },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('CALL HELPLINE (112)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('COPY HELPLINE (112)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
-  void _simulateFakeCall() {
+  void _simulateFakeCall(String callerName) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -71,9 +86,9 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
                 child: Icon(Icons.person, size: 50, color: Colors.white70),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Mom (Home)',
-                style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+              Text(
+                callerName,
+                style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -125,6 +140,11 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeNotifierProvider) == ThemeMode.dark;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final userService = ref.watch(userServiceProvider);
+    final profileStream = currentUser == null
+        ? Stream<UserModel?>.value(null)
+        : userService.streamUserProfile(currentUser.uid);
 
     return Scaffold(
       backgroundColor: isDarkMode ? AppColors.charcoal : AppColors.appleBackground,
@@ -137,146 +157,177 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: _triggerSosAlert,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _isSosTriggered ? Colors.redAccent : AppColors.rosePink,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.rosePink.withAlpha((0.4 * 255).round()),
-                      blurRadius: 30,
-                      spreadRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.shield, color: Colors.white, size: 64),
-                    SizedBox(height: 8),
-                    Text(
-                      'TAP FOR SOS',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Pressing SOS immediately alerts your emergency contacts & live command center.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: isDarkMode ? Colors.white60 : AppColors.appleTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 36),
+      body: StreamBuilder<UserModel?>(
+        stream: profileStream,
+        builder: (context, snapshot) {
+          final profile = snapshot.data;
+          final guardianName = _guardianName(profile);
+          final emergencyPhone = _emergencyPhone(profile);
 
-            // Smart Safety Features Grid
-            Row(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: _buildFeatureCard(
-                    isDarkMode: isDarkMode,
-                    icon: Icons.phone_callback_rounded,
-                    title: 'Fake Call Simulator',
-                    subtitle: 'Escape uncomfortable situations with a simulated call',
-                    onTap: _simulateFakeCall,
+                GestureDetector(
+                  onTap: () => _triggerSosAlert(
+                    guardianName: guardianName,
+                    emergencyPhone: emergencyPhone,
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildFeatureCard(
-                    isDarkMode: isDarkMode,
-                    icon: Icons.share_location_rounded,
-                    title: 'Share Live Journey',
-                    subtitle: 'Broadcast real-time GPS tracking link to trusted circle',
-                    onTap: () {
-                      Clipboard.setData(const ClipboardData(
-                        text: 'HerWay live journey: tracking link will be available when a ride is active.',
-                      ));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Journey details copied. Start a ride to share live tracking.')),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Emergency Contacts Quick Dial Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: isDarkMode ? AppColors.slate : AppColors.appleCard,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isDarkMode ? Colors.white10 : AppColors.appleBorder,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: 180,
+                    height: 180,
                     decoration: BoxDecoration(
-                      color: AppColors.herOrange.withAlpha((0.15 * 255).round()),
                       shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.contact_phone_rounded, color: AppColors.herOrange, size: 24),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Primary Guardian Connected',
-                          style: TextStyle(
-                            color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
+                      color: _isSosTriggered ? Colors.redAccent : AppColors.rosePink,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.rosePink.withAlpha((0.4 * 255).round()),
+                          blurRadius: 30,
+                          spreadRadius: 8,
                         ),
-                        const SizedBox(height: 2),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.shield, color: Colors.white, size: 64),
+                        SizedBox(height: 8),
                         Text(
-                          'Mom (+91 98765 43210)',
+                          'TAP FOR SOS',
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white60 : AppColors.appleTextSecondary,
-                            fontSize: 12,
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.greenAccent,
-                    size: 22,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'SOS is currently a preview. Real SMS, calls, and live location sharing still need backend integration.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDarkMode ? Colors.white60 : AppColors.appleTextSecondary,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 36),
+
+                // Smart Safety Features Grid
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildFeatureCard(
+                        isDarkMode: isDarkMode,
+                        icon: Icons.phone_callback_rounded,
+                        title: 'Fake Call Simulator',
+                        subtitle: 'Open a simulated incoming-call screen',
+                        onTap: () => _simulateFakeCall(guardianName),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildFeatureCard(
+                        isDarkMode: isDarkMode,
+                        icon: Icons.share_location_rounded,
+                        title: 'Share Live Journey',
+                        subtitle: 'Copy preview text until tracking links are live',
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(
+                            text: emergencyPhone.isEmpty
+                                ? 'HerWay safety preview: add an emergency contact before sharing live journey details.'
+                                : 'HerWay safety preview for $guardianName ($emergencyPhone): live journey links are not enabled yet.',
+                          ));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Preview journey message copied.')),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Emergency Contacts Quick Dial Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? AppColors.slate : AppColors.appleCard,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.white10 : AppColors.appleBorder,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.herOrange.withAlpha((0.15 * 255).round()),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.contact_phone_rounded, color: AppColors.herOrange, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              emergencyPhone.isEmpty
+                                  ? 'No Guardian Connected'
+                                  : 'Primary Guardian Connected',
+                              style: TextStyle(
+                                color: isDarkMode ? AppColors.softWhite : AppColors.appleTextPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              emergencyPhone.isEmpty
+                                  ? 'Add an emergency contact in Account.'
+                                  : '$guardianName ($emergencyPhone)',
+                              style: TextStyle(
+                                color: isDarkMode ? Colors.white60 : AppColors.appleTextSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        emergencyPhone.isEmpty
+                            ? Icons.error_outline_rounded
+                            : Icons.check_circle_rounded,
+                        color: emergencyPhone.isEmpty
+                            ? AppColors.herOrange
+                            : Colors.greenAccent,
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
+  }
+
+  String _guardianName(UserModel? profile) {
+    final name = profile?.guardianName.trim() ?? '';
+    return name.isEmpty ? 'Emergency Guardian' : name;
+  }
+
+  String _emergencyPhone(UserModel? profile) {
+    return profile?.emergencyContact.trim() ?? '';
   }
 
   Widget _buildFeatureCard({

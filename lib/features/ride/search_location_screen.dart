@@ -71,17 +71,6 @@ class _SearchLocationScreenState extends ConsumerState<SearchLocationScreen> {
     super.initState();
     _filteredPlaces = _popularPlaces;
     _dropoffController.addListener(_onSearchChanged);
-    // Update pickup text when the current location provider resolves,
-    // but don't overwrite if the user has edited the pickup field.
-    ref.listen(currentLocationProvider, (previous, next) {
-      final resolved = next.asData?.value;
-      if (resolved != null) {
-        if (_pickupController.text.trim().isEmpty ||
-            _pickupController.text == 'Current Location (Hitec City)') {
-          _pickupController.text = 'Current Location';
-        }
-      }
-    });
   }
 
   void _onSearchChanged() {
@@ -192,6 +181,16 @@ class _SearchLocationScreenState extends ConsumerState<SearchLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(currentLocationProvider, (previous, next) {
+      final resolved = next.asData?.value;
+      if (resolved != null) {
+        if (_pickupController.text.trim().isEmpty ||
+            _pickupController.text == 'Current Location (Hitec City)') {
+          _pickupController.text = 'Current Location';
+        }
+      }
+    });
+
     final isDarkMode = ref.watch(themeNotifierProvider) == ThemeMode.dark;
     final currentLocationAsync = ref.watch(currentLocationProvider);
     final currentLocation = currentLocationAsync.asData?.value;

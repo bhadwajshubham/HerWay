@@ -293,7 +293,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ElevatedButton(
                       onPressed: _isSaving ? null : () => _updateProfile(user),
                       child: _isSaving
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? CircularProgressIndicator(color: theme.colorScheme.onPrimary)
                           : const Text('Save Profile'),
                     ),
                 ],
@@ -320,7 +320,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       controller: controller,
       enabled: enabled,
       keyboardType: keyboardType,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
+      style: TextStyle(
+        color: enabled ? null : Theme.of(context).colorScheme.onSurface.withAlpha(120),
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        fillColor: enabled ? null : Theme.of(context).colorScheme.onSurface.withAlpha(10),
+      ),
       validator: validator,
     );
   }

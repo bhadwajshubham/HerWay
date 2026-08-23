@@ -15,6 +15,7 @@ class DriverScreen extends ConsumerStatefulWidget {
 
 class _DriverScreenState extends ConsumerState<DriverScreen> {
   bool _isOnline = true;
+  final Set<String> _acceptingRideIds = {};
 
   @override
   Widget build(BuildContext context) {
@@ -170,43 +171,60 @@ class _DriverScreenState extends ConsumerState<DriverScreen> {
                           ],
                         ),
                       )
-                    : StreamBuilder<List<RideModel>>(
-                        stream: rideService.streamPendingRides(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(color: AppColors.herOrange),
-                            );
+                    : StreamBuilder<RideModel?>(
+                        stream: FirebaseAuth.instance.currentUser != null
+                            ? rideService.streamActiveRideForDriver(FirebaseAuth.instance.currentUser!.uid)
+                            : Stream.value(null),
+                        builder: (context, activeRideSnapshot) {
+                          if (activeRideSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator(color: AppColors.herOrange));
+                          }
+                          
+                          final activeRide = activeRideSnapshot.data;
+                          
+                          if (activeRide != null) {
+                            return _buildActiveRideCard(activeRide);
                           }
 
-                          final rides = snapshot.data ?? [];
+                          return StreamBuilder<List<RideModel>>(
+                            stream: rideService.streamPendingRides(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(
+                                  child: CircularProgressIndicator(color: AppColors.herOrange),
+                                );
+                              }
 
-                          if (rides.isEmpty) {
-                            return Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(Icons.radar, color: AppColors.herOrange, size: 50),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'Scanning for ride requests...',
-                                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                                  ),
-                                  SizedBox(height: 6),
-                                  Text(
-                                    'New ride bookings in your city will appear here live.',
-                                    style: TextStyle(color: Colors.white30, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
+                              final rides = snapshot.data ?? [];
 
-                          return ListView.builder(
-                            itemCount: rides.length,
-                            itemBuilder: (context, index) {
-                              final ride = rides[index];
-                              return _buildRideRequestCard(ride);
+                              if (rides.isEmpty) {
+                                return Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(Icons.radar, color: AppColors.herOrange, size: 50),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Scanning for ride requests...',
+                                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                                      ),
+                                      SizedBox(height: 6),
+                                      Text(
+                                        'New ride bookings in your city will appear here live.',
+                                        style: TextStyle(color: Colors.white30, fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              return ListView.builder(
+                                itemCount: rides.length,
+                                itemBuilder: (context, index) {
+                                  final ride = rides[index];
+                                  return _buildRideRequestCard(ride);
+                                },
+                              );
                             },
                           );
                         },
@@ -221,6 +239,7 @@ class _DriverScreenState extends ConsumerState<DriverScreen> {
 
   Widget _buildRideRequestCard(RideModel ride) {
     final rideService = ref.read(rideServiceProvider);
+    final isAccepting = _acceptingRideIds.contains(ride.id);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -302,29 +321,45 @@ class _DriverScreenState extends ConsumerState<DriverScreen> {
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-                onPressed: () async {
+                onPressed: isAccepting
+                    ? null
+                    : () async {
+                setState(() => _acceptingRideIds.add(ride.id));
                 try {
                   final currentUser = FirebaseAuth.instance.currentUser;
-                  final userService = ref.read(userServiceProvider);
-                  final driverProfile = currentUser != null ? await userService.getUserProfile(currentUser.uid) : null;
+                  if (currentUser == null) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please sign in to accept rides.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                    return;
+                  }
 
-                  final driverId = currentUser?.uid ?? 'DRV_DEMO_99';
-                  final driverName = driverProfile?.name ?? currentUser?.displayName ?? 'Driver';
-                  final driverPhone = driverProfile?.phone ?? currentUser?.phoneNumber ?? '';
-                  final vehicleNumber = 'TS 09 AB 1234';
+                  final userService = ref.read(userServiceProvider);
+                  final driverProfile =
+                      await userService.getUserProfile(currentUser.uid);
 
                   await rideService.acceptRide(
                     rideId: ride.id,
-                    driverId: driverId,
-                    driverName: driverName,
-                    driverPhone: driverPhone,
-                    vehicleNumber: vehicleNumber,
+                    driverId: currentUser.uid,
+                    driverName: driverProfile?.name ??
+                        currentUser.displayName ??
+                        'Driver',
+                    driverPhone:
+                        driverProfile?.phone ?? currentUser.phoneNumber ?? '',
+                    vehicleNumber: 'TS 09 AB 1234',
                   );
 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Ride Accepted! Routing to pickup location...'),
+                        content: Text(
+                          'Ride Accepted! Routing to pickup location...',
+                        ),
                         backgroundColor: Colors.green,
                       ),
                     );
@@ -332,8 +367,15 @@ class _DriverScreenState extends ConsumerState<DriverScreen> {
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to accept ride: $e'), backgroundColor: Colors.red),
+                      SnackBar(
+                        content: Text('Failed to accept ride: $e'),
+                        backgroundColor: Colors.red,
+                      ),
                     );
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() => _acceptingRideIds.remove(ride.id));
                   }
                 }
               },
@@ -343,11 +385,157 @@ class _DriverScreenState extends ConsumerState<DriverScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: const Text(
-                'ACCEPT RIDE DISPATCH',
+              child: Text(
+                isAccepting ? 'ACCEPTING...' : 'ACCEPT RIDE DISPATCH',
                 style: TextStyle(
                   color: AppColors.charcoal,
                   fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveRideCard(RideModel ride) {
+    final rideService = ref.read(rideServiceProvider);
+    final isAccepted = ride.status == 'accepted';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.slate,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.greenAccent.withAlpha(100), width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black38,
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isAccepted ? 'RIDER WAITING' : 'TRIP IN PROGRESS',
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              if (isAccepted)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.herOrange.withAlpha(40),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'OTP: ${ride.otp}',
+                    style: const TextStyle(color: AppColors.herOrange, fontWeight: FontWeight.bold),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.person_pin, color: AppColors.softWhite, size: 22),
+                  const SizedBox(width: 8),
+                  Text(
+                    ride.riderName,
+                    style: const TextStyle(
+                      color: AppColors.softWhite,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '₹${ride.fare.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  color: AppColors.softWhite,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const Divider(color: Colors.white10, height: 24),
+          Row(
+            children: [
+              const Icon(Icons.circle, color: Colors.greenAccent, size: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  ride.pickupAddress,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.location_on, color: AppColors.herOrange, size: 14),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  ride.dropoffAddress,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () async {
+                try {
+                  if (isAccepted) {
+                    await rideService.updateRideStatus(ride.id, 'in_transit');
+                  } else {
+                    await rideService.updateRideStatus(ride.id, 'completed');
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isAccepted ? AppColors.herOrange : Colors.greenAccent,
+                foregroundColor: AppColors.charcoal,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                isAccepted ? 'START RIDE' : 'COMPLETE RIDE',
+                style: const TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),

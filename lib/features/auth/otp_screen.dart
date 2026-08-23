@@ -45,6 +45,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         final userService = ref.read(userServiceProvider);
         final existingUser = await userService.getUserProfile(user.uid);
 
+        if (!mounted) return;
+
         if (existingUser == null) {
           // New User -> Profile Setup Screen
           Navigator.pushAndRemoveUntil(
@@ -66,7 +68,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
         messenger.showSnackBar(
           SnackBar(
             content: Text('Verification failed: $e'),
@@ -74,6 +75,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

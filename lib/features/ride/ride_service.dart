@@ -60,6 +60,22 @@ class RideService {
     });
   }
 
+  /// Stream active ride for a given driver
+  Stream<RideModel?> streamActiveRideForDriver(String driverId) {
+    return _firestore
+        .collection('rides')
+        .where('driverId', isEqualTo: driverId)
+        .where('status', whereIn: ['accepted', 'in_transit'])
+        .snapshots()
+        .map((snapshot) {
+          if (snapshot.docs.isNotEmpty) {
+            final doc = snapshot.docs.first;
+            return RideModel.fromMap(doc.data(), doc.id);
+          }
+          return null;
+        });
+  }
+
   /// Stream ride history for a given rider (ordered from newest)
   Stream<List<RideModel>> streamRidesForUser(String uid) {
     return _firestore

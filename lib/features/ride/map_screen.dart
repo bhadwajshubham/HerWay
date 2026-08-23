@@ -46,6 +46,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   static const double _introDiscountCap = 40.0;
 
   bool _isBooking = false;
+  bool _isCancelling = false;
   String? _activeRideId;
   final _routeService = RouteService();
   GoogleMapController? _mapController;
@@ -175,8 +176,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final ride = RideModel(
         id: '',
         riderId: riderId,
-        riderName: userProfile?.name ?? user?.displayName ?? 'Guest',
-        riderPhone: userProfile?.phone ?? user?.phoneNumber ?? '',
+        riderName: userProfile?.name ?? user.displayName ?? 'Guest',
+        riderPhone: userProfile?.phone ?? user.phoneNumber ?? '',
         pickupAddress: widget.pickupAddress,
         dropoffAddress: widget.dropoffAddress,
         pickupLat: widget.pickupLat,
@@ -263,7 +264,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ],
                       color: theme.colorScheme.primary.withAlpha(180),
                       width: 4,
-                      patterns: const [PatternItem.dash(16), PatternItem.gap(8)],
+                      patterns: [PatternItem.dash(16), PatternItem.gap(8)],
                     ),
                   },
           ),
@@ -449,23 +450,36 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 color: theme.colorScheme.onSurface.withAlpha(20),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Payable now',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface.withAlpha(180),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Payable now',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withAlpha(180),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      '₹${finalFare.toStringAsFixed(0)}*',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
                 Text(
-                  '₹${finalFare.toStringAsFixed(0)}',
+                  '*Fare may vary based on route and wait time',
                   style: TextStyle(
-                    color: theme.colorScheme.primary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface.withAlpha(120),
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -495,8 +509,32 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  bool _canRiderCancel(RideModel ride) {
+    return ride.status == 'requested' || ride.status == 'accepted';
+  }
+
+  Future<void> _cancelRide(RideModel ride) async {
+    if (_isCancelling || !_canRiderCancel(ride)) return;
+    setState(() => _isCancelling = true);
+    try {
+      await ref.read(rideServiceProvider).updateRideStatus(ride.id, 'cancelled');
+      if (mounted) setState(() => _activeRideId = null);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to cancel ride: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isCancelling = false);
+    }
+  }
+
   Widget _buildActiveRideStatusSheet(RideModel ride) {
     final bool isAccepted = ride.status == 'accepted';
+    final bool canCancel = _canRiderCancel(ride);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -611,38 +649,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             const SizedBox(height: 20),
           ],
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: OutlinedButton(
-              onPressed: () async {
-                try {
-                  await ref
-                      .read(rideServiceProvider)
-                      .updateRideStatus(ride.id, 'cancelled');
-                  if (mounted) setState(() => _activeRideId = null);
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Unable to cancel ride: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.redAccent),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+          if (canCancel)
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton(
+                onPressed: _isCancelling ? null : () => _cancelRide(ride),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.redAccent),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'Cancel Request',
-                style: TextStyle(color: Colors.redAccent),
+                child: _isCancelling
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.redAccent,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        isAccepted ? 'Cancel Ride' : 'Cancel Request',
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
               ),
             ),
-          ),
         ],
       ),
     );

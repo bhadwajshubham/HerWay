@@ -10,7 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app_config.dart';
 import 'core/main_scaffold.dart';
 import 'core/storage_service.dart';
+import 'features/auth/profile_setup_screen.dart';
+import 'features/demo/demo_shell.dart';
 import 'features/auth/login_screen.dart';
+import 'features/profile/user_service.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 
@@ -51,7 +54,9 @@ class HerWayApp extends ConsumerWidget {
     return MaterialPageRoute<void>(
       settings: settings,
       builder: (_) => path == '/' || path.isEmpty
-          ? const FirebaseBootstrap()
+          ? AppConfig.isDemoMode
+              ? const DemoShell()
+              : const FirebaseBootstrap()
           : NotFoundScreen(path: path),
     );
   }
@@ -128,9 +133,54 @@ class AuthWrapper extends StatelessWidget {
             ),
           );
         }
-        return snapshot.hasData ? const MainScaffold() : const LoginScreen();
+        final user = snapshot.data;
+        return user != null
+            ? AuthenticatedProfileGate(user: user)
+            : const LoginScreen();
       },
     );
+  }
+}
+
+class AuthenticatedProfileGate extends ConsumerWidget {
+  const AuthenticatedProfileGate({super.key, required this.user});
+
+  final User user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return StreamBuilder(
+      stream: ref.watch(userServiceProvider).streamUserProfile(user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const _LoadingScreen(message: 'Loading your safety profile…');
+        }
+        if (snapshot.hasError) {
+          return _StartupErrorScreen(
+            error: snapshot.error!,
+            onRetry: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => const FirebaseBootstrap(),
+              ),
+            ),
+          );
+        }
+        final profile = snapshot.data;
+        if (profile == null) {
+          return ProfileSetupScreen(
+            uid: user.uid,
+            phone: _phoneWithoutIndiaCode(user.phoneNumber),
+          );
+        }
+        return const MainScaffold();
+      },
+    );
+  }
+
+  String _phoneWithoutIndiaCode(String? phoneNumber) {
+    final phone = phoneNumber?.trim() ?? '';
+    return phone.startsWith('+91') ? phone.substring(3) : phone;
   }
 }
 

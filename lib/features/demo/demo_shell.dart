@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/app_theme.dart';
-import '../auth/login_screen.dart';
 import '../safety/safety_screen.dart';
 
 /// Offline, data-free preview for sharing the interface before backend setup.
@@ -25,14 +24,14 @@ class _DemoShellState extends ConsumerState<DemoShell> {
       const DemoHomeScreen(),
       const DemoDriverScreen(),
       const SafetyScreen(),
-      const LoginScreen(),
+      const DemoAuthScreen(),
       const DemoProfileScreen(),
     ];
 
     final roleLabel = _index == 1 ? 'DRIVER MODE' : 'RIDER MODE';
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: _index == 3 ? null : AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 44,
@@ -611,6 +610,144 @@ class _DemoDriverScreenState extends State<DemoDriverScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class DemoAuthScreen extends StatelessWidget {
+  const DemoAuthScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.charcoal : AppColors.appleBackground,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const SizedBox(height: 32),
+            const Text(
+              'HerWay.',
+              style: TextStyle(
+                color: AppColors.herOrange,
+                fontSize: 40,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -1,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Auth preview',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Demo mode does not contact Firebase or send SMS. Use connected mode for real phone OTP.',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 32),
+            _DemoInputPreview(
+              label: 'Mobile number',
+              value: '+91 99999 99999',
+              icon: Icons.phone_outlined,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 16),
+            _DemoInputPreview(
+              label: 'OTP code',
+              value: '••••••',
+              icon: Icons.lock_outline_rounded,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Demo only — no authentication request was sent.'),
+                ),
+              ),
+              child: const Text('Preview Verify & Continue'),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Connected launch checklist: Firebase Phone Auth enabled, test phone numbers configured, authorized domains added.',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DemoInputPreview extends StatelessWidget {
+  const _DemoInputPreview({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.isDark,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.slate : AppColors.appleCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white10 : AppColors.appleBorder,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.herOrange),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

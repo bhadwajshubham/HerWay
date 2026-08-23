@@ -52,10 +52,11 @@ service cloud.firestore {
       
       // Access control for updating ride state
       allow update: if isAuthenticated() && (
-        // Rider can cancel their own requested ride
+        // Rider can cancel before the trip starts
         (resource.data.riderId == request.auth.uid &&
-          resource.data.status == 'requested' &&
-          request.resource.data.status == 'cancelled') ||
+          resource.data.status in ['requested', 'accepted'] &&
+          request.resource.data.status == 'cancelled' &&
+          request.resource.data.riderId == resource.data.riderId) ||
         
         // Driver can accept a requested ride (if they are a verified driver)
         (resource.data.status == 'requested' &&

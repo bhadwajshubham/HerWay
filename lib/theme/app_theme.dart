@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/storage_service.dart';
 
@@ -49,8 +50,8 @@ class AppColors {
 
 class AppTheme {
   static ThemeData darkTheme() {
-    return ThemeData(
-      brightness: Brightness.dark,
+    final base = ThemeData.dark(useMaterial3: true);
+    return base.copyWith(
       scaffoldBackgroundColor: AppColors.charcoal,
       primaryColor: AppColors.herOrange,
       colorScheme: const ColorScheme.dark(
@@ -61,11 +62,19 @@ class AppTheme {
         secondary: AppColors.rosePink,
         onSecondary: Colors.white,
       ),
-      appBarTheme: const AppBarTheme(
+      textTheme: GoogleFonts.outfitTextTheme(base.textTheme).apply(
+        bodyColor: AppColors.softWhite,
+        displayColor: AppColors.softWhite,
+      ),
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.softWhite),
-        titleTextStyle: TextStyle(color: AppColors.softWhite, fontSize: 20, fontWeight: FontWeight.bold),
+        iconTheme: const IconThemeData(color: AppColors.softWhite),
+        titleTextStyle: GoogleFonts.outfit(
+          color: AppColors.softWhite,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.slate,
@@ -79,7 +88,7 @@ class AppTheme {
           elevation: 0,
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          textStyle: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -88,6 +97,10 @@ class AppTheme {
         hintStyle: const TextStyle(color: Colors.white24),
         labelStyle: const TextStyle(color: Colors.white70),
         prefixIconColor: Colors.white54,
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.white12),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -109,13 +122,12 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
-      useMaterial3: true,
     );
   }
 
   static ThemeData lightTheme() {
-    return ThemeData(
-      brightness: Brightness.light,
+    final base = ThemeData.light(useMaterial3: true);
+    return base.copyWith(
       scaffoldBackgroundColor: AppColors.appleBackground,
       primaryColor: AppColors.herOrange,
       colorScheme: const ColorScheme.light(
@@ -126,11 +138,19 @@ class AppTheme {
         secondary: AppColors.rosePink,
         onSecondary: Colors.white,
       ),
-      appBarTheme: const AppBarTheme(
+      textTheme: GoogleFonts.outfitTextTheme(base.textTheme).apply(
+        bodyColor: AppColors.appleTextPrimary,
+        displayColor: AppColors.appleTextPrimary,
+      ),
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.appleTextPrimary),
-        titleTextStyle: TextStyle(color: AppColors.appleTextPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+        iconTheme: const IconThemeData(color: AppColors.appleTextPrimary),
+        titleTextStyle: GoogleFonts.outfit(
+          color: AppColors.appleTextPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.appleCard,
@@ -144,7 +164,7 @@ class AppTheme {
           elevation: 0,
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          textStyle: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -153,6 +173,10 @@ class AppTheme {
         hintStyle: const TextStyle(color: Colors.black26),
         labelStyle: const TextStyle(color: AppColors.appleTextSecondary),
         prefixIconColor: AppColors.appleTextSecondary,
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.appleBorder),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -174,7 +198,6 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
-      useMaterial3: true,
     );
   }
 }

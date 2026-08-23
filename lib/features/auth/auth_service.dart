@@ -50,6 +50,7 @@ class AuthService {
           phoneNumber: formattedPhone,
           verificationCompleted: (PhoneAuthCredential credential) async {
             await _firebaseAuth.signInWithCredential(credential);
+            onSuccess();
           },
           verificationFailed: (FirebaseAuthException e) {
             onError(e.message ?? 'Verification failed');

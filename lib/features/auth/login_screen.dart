@@ -1,9 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../theme/app_theme.dart';
+import '../../core/main_scaffold.dart';
 import 'otp_screen.dart';
 import 'auth_service.dart';
+import 'profile_setup_screen.dart';
+import '../profile/user_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +19,32 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
+
+  Future<void> _continueAfterSignIn(User user) async {
+    final userService = ref.read(userServiceProvider);
+    final existingUser = await userService.getUserProfile(user.uid);
+    if (!mounted) return;
+
+    if (existingUser == null) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProfileSetupScreen(
+            uid: user.uid,
+            phone: _phoneController.text.trim(),
+          ),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const MainScaffold()),
+      (route) => false,
+    );
+  }
 
   void _verifyPhone() {
     final phone = _phoneController.text.trim();
@@ -29,16 +59,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     ref.read(authServiceProvider).sendOtp(
       phoneNumber: phone,
-      onSuccess: () {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OtpScreen(phoneNumber: phone),
-            ),
-          );
+      onSuccess: () async {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await _continueAfterSignIn(user);
+          return;
         }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OtpScreen(phoneNumber: phone),
+          ),
+        );
       },
       onError: (error) {
         if (mounted) {
@@ -61,7 +95,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _handleSocialLogin(String provider) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider login triggered. Phone verification required next.')),
+      SnackBar(
+        content: Text('$provider sign-in is not enabled yet. Use phone OTP.'),
+      ),
     );
   }
 
