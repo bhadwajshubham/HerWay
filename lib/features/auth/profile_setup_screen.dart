@@ -198,17 +198,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(
+          style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
-          decoration: InputDecoration(hintText: hint, prefixIcon: Icon(icon)),
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon),
+          ),
           validator: validator,
         ),
       ],

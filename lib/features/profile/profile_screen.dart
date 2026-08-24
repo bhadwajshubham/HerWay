@@ -47,14 +47,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
-  void _populateData(UserModel user) {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     if (!_isInitialized) {
-      _nameController.text = user.name;
-      _emailController.text = user.email ?? '';
-      _emergencyContactController.text = user.emergencyContact;
-      _guardianNameController.text = user.guardianName;
-      _isInitialized = true;
+      final userAsync = ref.watch(userProfileStreamProvider);
+      userAsync.whenData((user) {
+        if (user != null && !_isInitialized) {
+          _populateData(user);
+        }
+      });
     }
+  }
+
+  void _populateData(UserModel user) {
+    if (_nameController.text != user.name) _nameController.text = user.name;
+    if (_emailController.text != (user.email ?? '')) _emailController.text = user.email ?? '';
+    if (_emergencyContactController.text != user.emergencyContact) _emergencyContactController.text = user.emergencyContact;
+    if (_guardianNameController.text != user.guardianName) _guardianNameController.text = user.guardianName;
+    _isInitialized = true;
   }
 
   Future<void> _updateProfile(UserModel currentUserModel) async {
@@ -316,17 +327,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
     return TextFormField(
       controller: controller,
       enabled: enabled,
       keyboardType: keyboardType,
-      style: TextStyle(
-        color: enabled ? null : Theme.of(context).colorScheme.onSurface.withAlpha(120),
-      ),
+      style: theme.textTheme.bodyMedium,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
-        fillColor: enabled ? null : Theme.of(context).colorScheme.onSurface.withAlpha(10),
       ),
       validator: validator,
     );

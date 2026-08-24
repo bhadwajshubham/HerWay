@@ -71,6 +71,20 @@ class _SearchLocationScreenState extends ConsumerState<SearchLocationScreen> {
     super.initState();
     _filteredPlaces = _popularPlaces;
     _dropoffController.addListener(_onSearchChanged);
+    _fetchCurrentLocation();
+  }
+
+  Future<void> _fetchCurrentLocation() async {
+    try {
+      final position = await ref.read(locationServiceProvider).getCurrentPosition();
+      // For now, update with coordinates; ideally use a geocoding service to get the address
+      if (mounted) {
+        _pickupController.text =
+            'Current Location (${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)})';
+      }
+    } catch (e) {
+      debugPrint('Error fetching location: $e');
+    }
   }
 
   void _onSearchChanged() {

@@ -79,11 +79,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                error.contains('operation-not-allowed')
-                    ? 'Please enable +91 in Firebase Console or add test number'
-                    : error,
-              ),
+              content: Text(error),
               backgroundColor: Colors.redAccent,
               duration: const Duration(seconds: 5),
             ),

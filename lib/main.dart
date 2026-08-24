@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +21,13 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  
   final sharedPreferences = await SharedPreferences.getInstance();
   ErrorWidget.builder = (details) => const _UnexpectedErrorScreen();
   runApp(ProviderScope(
@@ -32,6 +41,10 @@ Future<void> main() async {
 class HerWayApp extends ConsumerWidget {
   const HerWayApp({super.key});
 
+  static FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  static FirebaseAnalyticsObserver observer =
+      FirebaseAnalyticsObserver(analytics: analytics);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeNotifierProvider);
@@ -42,6 +55,7 @@ class HerWayApp extends ConsumerWidget {
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.darkTheme(),
       themeMode: themeMode,
+      navigatorObservers: [observer],
       onGenerateInitialRoutes: (initialRoute) => [
         _routeFor(RouteSettings(name: initialRoute)),
       ],
@@ -80,19 +94,13 @@ class _FirebaseBootstrapState extends State<FirebaseBootstrap> {
 
   Future<void> _initializeFirebase() async {
     if (kIsWeb) AppConfig.validateFirebase();
-    if (Firebase.apps.isNotEmpty) return;
-
-    final initialization = kIsWeb
-        ? Firebase.initializeApp(
-            options: DefaultFirebaseOptions.currentPlatform,
-          )
-        : Firebase.initializeApp();
-    await initialization.timeout(const Duration(seconds: 20));
+    // Firebase is initialized in main()
   }
 
   void _retry() {
     setState(() => _initialization = _initializeFirebase());
   }
+
 
   @override
   Widget build(BuildContext context) {

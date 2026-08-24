@@ -36,22 +36,40 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         final pages = [
           const HomeScreen(),
           const ActivityScreen(),
-          if (isDriver) const DriverScreen(),
           const SafetyScreen(),
           const ProfileScreen(),
         ];
 
         final navItems = [
-          const BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          const BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Activity'),
-          if (isDriver) const BottomNavigationBarItem(icon: Icon(Icons.local_taxi_rounded), label: 'Driver'),
-          const BottomNavigationBarItem(icon: Icon(Icons.shield_rounded), label: 'Safety'),
-          const BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Account'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.history_rounded),
+            label: 'Activity',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.shield_rounded),
+            label: 'Safety',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded),
+            label: 'Account',
+          ),
         ];
 
-        // A profile stream can change the number of tabs (for example when a
-        // user becomes a driver). Keep the selected tab valid after that
-        // change instead of showing a different page than the selected item.
+        if (isDriver) {
+          pages.insert(2, const DriverScreen());
+          navItems.insert(
+            2,
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.local_taxi_rounded),
+              label: 'Driver',
+            ),
+          );
+        }
+
         final selectedIndex =
             _currentIndex.clamp(0, pages.length - 1).toInt();
         if (_currentIndex != selectedIndex) {

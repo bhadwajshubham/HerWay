@@ -400,10 +400,11 @@ rosePink:         #FF2D55    // SOS/emergency, secondary accent
 - [x] Driver ride acceptance
 - [x] Safety toolkit UI (SOS, fake call)
 - [x] Dual dark/light theme system
-- [ ] **Wire bottom nav tabs to real screens**
-- [ ] **Fix ProfileScreen to pre-load data**
-- [ ] **Pass location data through search → map flow**
-- [ ] **Remove hardcoded names/values**
+- [x] **Pass location data through search → map flow**
+- [x] **Remove hardcoded names/values**
+- [ ] **Implement Robust Safety (Real SOS, location sharing)**
+- [x] **Fix ProfileScreen to pre-load data**
+- [x] **Wire bottom nav tabs to real screens**
 
 ### Phase 2 — Beta Launch
 - [ ] Real GPS location via `geolocator`

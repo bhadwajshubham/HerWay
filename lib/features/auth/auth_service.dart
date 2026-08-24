@@ -29,6 +29,19 @@ class AuthService {
     await _firebaseAuth.signOut();
   }
 
+  String _mapFirebaseErrorToMessage(String errorCode) {
+    switch (errorCode) {
+      case 'invalid-phone-number':
+        return 'The phone number provided is invalid.';
+      case 'too-many-requests':
+        return 'Too many requests. Please try again later.';
+      case 'operation-not-allowed':
+        return 'Phone authentication is not enabled for this project.';
+      default:
+        return 'An unexpected error occurred. Please try again.';
+    }
+  }
+
   /// Triggers the Firebase SMS sending process (Handles both Web & Native)
   Future<void> sendOtp({
     required String phoneNumber,
@@ -53,7 +66,7 @@ class AuthService {
             onSuccess();
           },
           verificationFailed: (FirebaseAuthException e) {
-            onError(e.message ?? 'Verification failed');
+            onError(_mapFirebaseErrorToMessage(e.code));
           },
           codeSent: (String verificationId, int? resendToken) {
             _verificationId = verificationId;
@@ -65,7 +78,7 @@ class AuthService {
         );
       }
     } catch (e) {
-      onError(e.toString());
+      onError('An unexpected error occurred. Please check your connection.');
     }
   }
 
