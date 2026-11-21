@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "399711586983",
+    "project_id": "herway-app-f6e0f",
+    "storage_bucket": "herway-app-f6e0f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:399711586983:android:466ea8ef6f39cb4d5da982",
+        "android_client_info": {
+          "package_name": "com.herway.her_way"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "399711586983-oq4u3t3hfvi6pd6vmii441ff877u75og.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDORX_fT3EZ6jFL7NY1wyPMRRk-dHSzW-Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "399711586983-oq4u3t3hfvi6pd6vmii441ff877u75og.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "399711586983-qik91lch6d39sa2rtd046md0o5csgu7k.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.herway.herWay"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

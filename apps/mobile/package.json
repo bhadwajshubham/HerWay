@@ -1,0 +1,53 @@
+{
+  "name": "@herway/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "android:rider": "cross-env APP_VARIANT=rider expo start --android",
+    "android:driver": "cross-env APP_VARIANT=driver expo start --android",
+    "export:web": "expo export --platform web",
+    "build:android": "expo export --platform android",
+    "eas:build:android": "eas build --platform android --profile preview",
+    "eas:build:android:production": "eas build --platform android --profile production",
+    "lint": "eslint app src --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@expo-google-fonts/inter": "0.4.2",
+    "@herway/shared": "workspace:*",
+    "expo": "~54.0.25",
+    "expo-constants": "~18.0.10",
+    "expo-notifications": "~0.32.12",
+    "expo-router": "~6.0.17",
+    "expo-secure-store": "~15.0.7",
+    "expo-splash-screen": "~31.0.13",
+    "expo-status-bar": "~3.0.8",
+    "firebase": "^12.6.0",
+    "lucide-react-native": "^0.468.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-maps": "^1.29.11",
+    "react-native-reanimated": "~4.1.7",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-web": "~0.21.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.1",
+    "@types/react": "~19.1.10",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.39.1",
+    "jsdom": "^31.0.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}

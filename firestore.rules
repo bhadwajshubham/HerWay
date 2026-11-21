@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function hasRole(role) { return signedIn() && role in request.auth.token.roles; }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid);
+      allow write: if false;
+    }
+
+    match /consents/{consentId} {
+      allow read: if signedIn() && resource.data.firebaseUid == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /emergencyContacts/{contactId} {
+      allow read: if signedIn() && resource.data.firebaseUid == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /circles/{circleId} {
+      allow read: if hasRole('operator') || hasRole('admin');
+      allow create, update, delete: if false;
+    }
+
+    match /circleMemberships/{membershipId} {
+      allow read: if signedIn() && (resource.data.firebaseUid == request.auth.uid || hasRole('operator') || hasRole('admin'));
+      allow create, update, delete: if false;
+    }
+
+    match /rides/{rideId} {
+      allow read: if signedIn() && (resource.data.riderId == request.auth.uid || resource.data.driverId == request.auth.uid || hasRole('operator') || hasRole('admin'));
+      allow create, update, delete: if false;
+    }
+
+    match /sosCases/{caseId} {
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || hasRole('operator') || hasRole('admin'));
+      allow create, update, delete: if false;
+    }
+
+    match /idempotency/{id} {
+      allow read, write: if false;
+    }
+    match /audit/{id} {
+      allow read, write: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

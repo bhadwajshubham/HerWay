@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "HerWay",
+    "slug": "herway",
+    "scheme": "herway",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "com.herway.her_way",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1F33"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.herway.herWay"
+    },
+    "plugins": ["expo-router"],
+    "extra": {
+      "appVariant": "rider",
+      "appMode": "demo"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function hasRole(role) { return signedIn() && role in request.auth.token.roles; }
+
+    match /users/{uid}/{allPaths=**} {
+      allow read: if signedIn() && (request.auth.uid == uid || hasRole('operator') || hasRole('admin'));
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /driver-documents/{uid}/{allPaths=**} {
+      allow read: if hasRole('operator') || hasRole('admin');
+      allow write: if hasRole('operator') || hasRole('admin');
+    }
+
+    match /incident-evidence/{caseId}/{allPaths=**} {
+      allow read: if hasRole('operator') || hasRole('admin');
+      allow write: if hasRole('operator') || hasRole('admin');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

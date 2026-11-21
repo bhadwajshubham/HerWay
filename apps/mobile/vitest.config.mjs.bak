@@ -1,0 +1,24 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    include: ['src/**/*.test.ts'],
+    setupFiles: ['./src/test/setup.ts'],
+    alias: {
+      'react-native': 'react-native-web',
+      'react-native-reanimated': './src/test/mocks/react-native-reanimated.ts',
+      'expo-constants': './src/test/mocks/expo-constants.ts',
+      'expo-secure-store': './src/test/mocks/expo-secure-store.ts',
+      'expo-router': './src/test/mocks/expo-router.ts',
+      'lucide-react-native': './src/test/mocks/lucide-react-native.ts',
+      '@expo-google-fonts/inter': './src/test/mocks/expo-google-fonts-inter.ts',
+      'firebase/app': './src/test/mocks/firebase-app.ts',
+      'firebase/auth': './src/test/mocks/firebase-auth.ts'
+    },
+    transform: {
+      '^.+\\.(ts|tsx)$': 'tsx'
+    }
+  }
+});
