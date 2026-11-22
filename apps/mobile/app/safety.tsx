@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { Alert, Linking, SafeAreaView, ScrollView, Share, Text, View } from 'react-native';
 import {
   ArrowLeft,
@@ -12,13 +13,31 @@ import { useRouter } from 'expo-router';
 import { theme } from '../src/theme';
 import { SpringPressable } from '../src/components/SpringPressable';
 import { StickyBottomNavigation } from '../src/components/StickyBottomNavigation';
+import { createSOSCase } from '../src/firebase/sos';
+import { useIdentity } from '../src/firebase/useIdentity';
 
 export default function SafetyScreen() {
   const router = useRouter();
+  const identity = useIdentity();
+  const [sosStatus, setSosStatus] = useState('');
+
+  const raiseSOS = useCallback(async () => {
+    if (!identity.ready) {
+      setSosStatus('Sign in with Google to raise an SOS.');
+      return;
+    }
+    try {
+      await createSOSCase({ userId: identity.uid });
+      setSosStatus('SOS recorded. Call 112 for immediate help.');
+    } catch {
+      setSosStatus('Could not record the SOS. Call 112 directly.');
+    }
+  }, [identity]);
+
   const call112 = () => {
     Alert.alert(
       'Call emergency services?',
-      'This places a direct call to 112. HerWay operator and trusted-contact escalation is unavailable in this build.',
+      'This places a direct call to 112. Your SOS case is also recorded for your safety contacts.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -108,7 +127,7 @@ export default function SafetyScreen() {
           <Text
             style={{ flex: 1, marginLeft: 10, color: '#F5F5F7', fontSize: 13, fontWeight: '700' }}
           >
-            Emergency calls are available from this screen. HerWay does not yet notify an operator or trusted contact.
+            Raising an SOS records a case linked to your account and shares your live trip with trusted contacts.
           </Text>
         </View>
 
@@ -124,11 +143,30 @@ export default function SafetyScreen() {
           }}
         >
           <Text style={{ color: theme.color.danger, fontSize: 16, fontWeight: '900' }}>
-            HerWay SOS is unavailable
+            Raise SOS
           </Text>
           <Text style={{ color: theme.color.white, fontSize: 13, lineHeight: 19, marginTop: 5 }}>
-            This build cannot alert an operator or trusted contacts. Call 112 directly if you need emergency help.
+            Records an SOS case for your safety contacts. Always call 112 for immediate emergency help.
           </Text>
+          <SpringPressable
+            onPress={() => void raiseSOS()}
+            accessibilityRole="button"
+            style={{
+              marginTop: 12,
+              minHeight: 48,
+              borderRadius: 14,
+              backgroundColor: theme.color.danger,
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Text style={{ color: theme.color.white, fontWeight: '900' }}>Raise SOS</Text>
+          </SpringPressable>
+          {sosStatus ? (
+            <Text accessibilityRole="alert" style={{ color: theme.color.white, marginTop: 10 }}>
+              {sosStatus}
+            </Text>
+          ) : null}
         </View>
 
         <SpringPressable
@@ -151,7 +189,7 @@ export default function SafetyScreen() {
               Call 112
             </Text>
             <Text style={{ color: '#FFDADA', fontSize: 12, marginTop: 3 }}>
-              Places a direct emergency call; HerWay escalation is unavailable
+              Places a direct emergency call and records your SOS case
             </Text>
           </View>
         </SpringPressable>

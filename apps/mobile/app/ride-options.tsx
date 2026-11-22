@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,31 +14,72 @@ import { theme } from '../src/theme';
 import { SpringPressable } from '../src/components/SpringPressable';
 import { StickyBottomNavigation } from '../src/components/StickyBottomNavigation';
 import { OpenStreetMap } from '../src/components/OpenStreetMap';
+import { createRide } from '../src/firebase/rides';
+import { useIdentity } from '../src/firebase/useIdentity';
 
 const options = [
   {
     id: 'calm',
     title: 'HerWay Calm',
-    detail: 'Illustrative option · 4 min',
+    detail: 'Verified woman captain · 4 min',
     price: '₹180',
     Icon: ShieldCheck
   },
   {
     id: 'comfort',
     title: 'HerWay Comfort',
-    detail: 'Illustrative comfort · 6 min',
+    detail: 'Extra space · 6 min',
     price: '₹245',
     Icon: Star
   },
-  { id: 'quick', title: 'Quick ride', detail: 'Illustrative option · 8 min', price: '₹150', Icon: Zap }
+  { id: 'quick', title: 'Quick ride', detail: 'Nearest captain · 8 min', price: '₹150', Icon: Zap }
 ] as const;
 
 export default function RideOptionsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ destination?: string; lat?: string; lon?: string }>();
   const [selected, setSelected] = useState<(typeof options)[number]['id']>('calm');
+  const [busy, setBusy] = useState(false);
+  const identity = useIdentity();
   const latitude = Number(params.lat);
   const longitude = Number(params.lon);
+
+  const onRequestRide = useCallback(async () => {
+    if (busy) return;
+    if (!identity.ready) {
+      Alert.alert('Sign in required', 'Sign in with Google to request a women-only ride.');
+      return;
+    }
+    const destination = typeof params.destination === 'string' ? params.destination.trim() : '';
+    if (destination.length < 3) {
+      Alert.alert('Choose a destination', 'Go back and pick where you want to go.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const rideId = await createRide(
+        { uid: identity.uid, displayName: identity.displayName },
+        {
+          riderName: identity.displayName,
+          pickup: 'HITEC City, Hyderabad',
+          dropoff: destination,
+          pickupPoint: { lat: 17.4435, lng: 78.3772 },
+          dropoffPoint: {
+            lat: Number.isFinite(latitude) ? latitude : 17.2403,
+            lng: Number.isFinite(longitude) ? longitude : 78.4294
+          },
+          rideCategory: selected === 'comfort' ? 'premium' : 'standard',
+          seats: 1,
+          womenOnly: true
+        }
+      );
+      router.push({ pathname: '/trip-live', params: { rideId } });
+    } catch (error) {
+      Alert.alert('Could not request ride', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, identity, latitude, longitude, params.destination, router, selected]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surfaceDark }}>
@@ -111,7 +152,7 @@ export default function RideOptionsScreen() {
           <Text
             style={{ color: theme.color.teal, fontSize: 12, lineHeight: 18, fontFamily: theme.font.bold }}
           >
-            Illustrative options only · no fare, driver matching, or booking
+            Fares are estimates. You will be matched with a verified woman captain.
           </Text>
         </View>
         <View
@@ -201,7 +242,8 @@ export default function RideOptionsScreen() {
         </View>
 
         <SpringPressable
-          onPress={() => router.push('/trip-live')}
+          onPress={() => void onRequestRide()}
+          disabled={busy}
           accessibilityRole="button"
           style={({ pressed }) => ({
             minHeight: 56,
@@ -217,7 +259,7 @@ export default function RideOptionsScreen() {
         >
           <CarFront size={19} color={theme.color.white} />
           <Text style={{ color: theme.color.white, fontSize: 15, fontWeight: '800' }}>
-            Preview selected ride
+            {busy ? 'Requesting…' : 'Request women-only ride'}
           </Text>
           <ArrowRight size={18} color={theme.color.white} />
         </SpringPressable>
