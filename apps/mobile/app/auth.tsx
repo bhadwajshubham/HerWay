@@ -117,7 +117,7 @@ export default function AuthScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surfaceDark }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} bounces={false}>
         <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
-          <ScreenHeader badge="DEMO SIGN-IN" />
+          <ScreenHeader badge="SIGN IN" />
         </View>
         <View
           style={{
