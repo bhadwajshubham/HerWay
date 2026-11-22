@@ -92,7 +92,7 @@ export default function ProfileScreen() {
             }}
           >
             <Text style={{ color: theme.color.teal, fontSize: 12, fontWeight: '800' }}>
-              DEMO PROFILE
+              HERWAY PROFILE
             </Text>
           </View>
         </View>
@@ -124,7 +124,7 @@ export default function ProfileScreen() {
               {displayName}
             </Text>
             <Text style={{ color: '#BBD0DA', fontSize: 13, marginTop: 4 }}>
-              Rider preview account
+              Verified HerWay member
             </Text>
           </View>
         </View>
@@ -138,7 +138,7 @@ export default function ProfileScreen() {
             marginBottom: 10
           }}
         >
-          Demo preferences
+          Ride preferences
         </Text>
         <View
           style={{
@@ -174,10 +174,10 @@ export default function ProfileScreen() {
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={{ color: theme.color.white, fontSize: 15, fontWeight: '800' }}>
-                Women-only preference preview
+                Women-only rides
               </Text>
               <Text style={{ color: "#A7A7AD", fontSize: 12, marginTop: 3 }}>
-                Illustrative only — no matching is enabled
+                Required for every HerWay ride
               </Text>
             </View>
             <View

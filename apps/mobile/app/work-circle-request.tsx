@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { SafeAreaView, ScrollView, Text, View } from 'react-native';
 import { ArrowLeft, Clock3, MapPin, Send, ShieldCheck } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { DemoBanner } from '../src/components/DemoBanner';
 import { theme } from '../src/theme';
 import { SpringPressable } from '../src/components/SpringPressable';
 import { StickyBottomNavigation } from '../src/components/StickyBottomNavigation';
@@ -47,7 +46,6 @@ export default function WorkCircleRequestScreen() {
           >
             <ArrowLeft size={22} color={theme.color.white} />
           </SpringPressable>
-          <DemoBanner />
         </View>
 
         <Text
@@ -226,7 +224,7 @@ export default function WorkCircleRequestScreen() {
           <Text
             style={{ color: theme.color.white, fontSize: 15, fontWeight: '900', marginLeft: 8 }}
           >
-            {sent ? 'Demo preview sent' : 'Send demo request'}
+            {sent ? 'Request sent' : 'Send request'}
           </Text>
         </SpringPressable>
 
@@ -274,8 +272,8 @@ export default function WorkCircleRequestScreen() {
               No guarantee or real matching
             </Text>
             <Text style={{ color: "#A7A7AD", fontSize: 12, lineHeight: 18, marginTop: 4 }}>
-              Names, organizations, routes, times, verification, and responses are fictional. This
-              demo does not arrange, track, or dispatch rides.
+              Names, organizations, routes, times, verification, and responses shown here are sample
+              data. This screen does not arrange, track, or dispatch rides.
             </Text>
           </View>
         </View>
