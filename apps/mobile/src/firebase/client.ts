@@ -26,7 +26,7 @@ export class FirebaseNotConfiguredError extends Error {
 function readConfig(): FirebaseWebConfig | null {
   const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
   const apiKey = extra.firebaseWebApiKey;
-  const authDomain = extra.firebaseWebAuthDomain;
+  const authDomain = extra.firebaseAuthDomain;
   const projectId = extra.firebaseProjectId;
   const appId = extra.firebaseAppId;
   if (
