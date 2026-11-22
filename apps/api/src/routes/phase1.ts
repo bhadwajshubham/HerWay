@@ -212,14 +212,12 @@ export function registerPhase1Routes(app: FastifyInstance): void {
 
     const scheduleValidation = validateScheduledAt(parsed.data.scheduledAt, Date.now());
     if (!scheduleValidation.ok) {
+      const reason = scheduleValidation.reason;
       return reply.status(400).send({
         error: {
-          code:
-            scheduleValidation.reason === 'TOO_FAR'
-              ? 'SCHEDULE_TOO_FAR'
-              : 'SCHEDULE_TOO_SOON',
+          code: reason === 'TOO_FAR' ? 'SCHEDULE_TOO_FAR' : 'SCHEDULE_TOO_SOON',
           message:
-            scheduleValidation.reason === 'TOO_FAR'
+            reason === 'TOO_FAR'
               ? 'Choose a pickup time within the next 30 days.'
               : 'Choose a pickup time at least 30 minutes from now.',
           requestId: request.id
