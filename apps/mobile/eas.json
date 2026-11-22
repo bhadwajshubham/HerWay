@@ -11,7 +11,7 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "APP_MODE": "demo",
+        "APP_MODE": "pilot",
         "APP_VARIANT": "rider",
         "NODE_ENV": "production"
       }

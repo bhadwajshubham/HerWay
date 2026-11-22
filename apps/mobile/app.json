@@ -17,7 +17,7 @@
     "plugins": ["expo-router"],
     "extra": {
       "appVariant": "rider",
-      "appMode": "demo"
+      "appMode": "pilot"
     }
   }
 }

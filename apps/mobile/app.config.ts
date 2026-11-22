@@ -2,13 +2,13 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = process.env.APP_VARIANT === 'driver' ? 'driver' : 'rider';
-  const appMode = process.env.APP_MODE ?? 'demo';
+  const appMode = process.env.APP_MODE ?? 'pilot';
   const apiUrl = process.env.API_URL;
   const buildProfile = process.env.EAS_BUILD_PROFILE;
   const resolvedApiUrl = apiUrl ?? 'http://127.0.0.1:3000';
 
   if (buildProfile === 'production' || appMode === 'live') {
-    throw new Error('Production HerWay builds are blocked until real ride and safety services pass review');
+    throw new Error('Production HerWay builds require approved ride and safety services');
   }
 
   if (buildProfile === 'preview' && (!apiUrl || !apiUrl.startsWith('https://'))) {
