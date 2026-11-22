@@ -2,7 +2,7 @@
 
 **Status:** Approved — Firebase-first Phase 1 pilot migration  
 **Scope:** Phase 0 + 3000-user Firebase Phase 1 pilot
-**Launch target:** Public Android rider/captain service and operations console across Hyderabad, available only during published staffed operating hours. This is a target, not a currently enabled capability.  
+**Launch target:** Controlled HITEC City pilot with rider/captain flows and a nickname-based community. Public citywide service, operations console, and staffed-hours dispatch are targets, not currently enabled capabilities.  
 **Stack decision:** Expo/TypeScript client + Fastify/TypeScript API + Firebase (Authentication, Firestore, Realtime Database, FCM, and Functions) is the smallest complete Phase 1 runtime. Profile photos use Cloudinary signed uploads; Firebase Storage and incident evidence remain future gated resources. MongoDB and Redis are removed from the pilot dependency path.
 
 ## 1. Goals and constraints
@@ -19,7 +19,7 @@ HerWay prioritizes:
 
 Audio monitoring is explicitly out of scope. Gemini is not used for matching, identity, or emergency decisions.
 
-## 1A. Circles, pooling, and group communication (architecture only)
+## 1A. Circles, pooling, and group communication
 
 ### Circles
 
@@ -29,20 +29,24 @@ Audio monitoring is explicitly out of scope. Gemini is not used for matching, id
 
 Circle membership is an eligibility signal, not a ride-safety guarantee. Legal and platform policy review is required before it affects matching or dispatch.
 
-The current API can discover approved Circles only by exact match to a verified Firebase email domain, request membership, and leave approval to an operator/admin. It stores no raw email and returns no coworker roster. It does not verify gender or captain eligibility. Chat and pooling remain disabled until membership revocation, moderation/reporting, privacy/retention, and operations controls are reviewed.
+The API can discover approved Circles only by exact match to a verified Firebase email domain, request membership, and leave approval to an operator/admin. It stores no raw email and returns no coworker roster. It does not verify gender or captain eligibility. The mobile community feed is nickname-based and separate from Circle membership; it is not a verification signal.
 
 ### Ride pools and independent rider states
 
-A future pool is represented separately from individual bookings:
+A pool is represented separately from individual bookings:
 
-- `RidePool`: route corridor, departure window, seat count, circle ID, partner-fleet/operator ID, women-only policy, matching state, and capacity.
+- `RidePool`: route corridor, departure window, seat count, women-only policy, matching state, and capacity.
 - `PoolBooking`: rider ID, pool ID, per-rider pickup/dropoff, fare share, independent cancellation/refund state, pickup confirmation, and a per-rider state machine.
 
-The pool is never a shortcut around women-only eligibility or server-authoritative ride transitions. Pool capacity, driver assignment, cancellation, and independent rider completion require future explicit guards and audits.
+The pool is never a shortcut around women-only eligibility or server-authoritative ride transitions. Pool capacity is enforced in Firestore rules and joins are transactional; independent rider cancellation/refund state remains gated.
 
 ### Group chat
 
-A future per-ride group chat is attached to a ride/pool, contains only ride participants and authorized operators, closes automatically at ride completion or expiry, and cannot create direct messages or public posts. Messages require moderation metadata and append-only moderation audit events. Sensitive incident evidence remains outside this chat model.
+Per-ride group chat is implemented client-side in Firestore (`rideRequests/{rideId}/messages`), readable only by ride participants, with body length limits in rules. It is separate from the public community feed and closes with the ride. Direct messages, moderation tooling, and retention policy remain gated work.
+
+### Live ride location
+
+Captains publish device coordinates to `rideRequests/{rideId}/liveLocation/current` during a trip; riders subscribe and render the position on the map. Rules allow writes only from the assigned captain and only while a ride exists. This is a captain-driven feature: no fleet, dispatch, or operator monitoring exists.
 
 ### Verification layers
 
@@ -170,7 +174,7 @@ No public profile should expose raw phone numbers; masked calling and time-limit
 - `RideEvent`: append-only state transition, actor, timestamp, source, and reason.
 - `TripLocationSample`: encrypted/retention-bounded location record used for live tracking and safety evidence.
 - `MatchingDecision`: candidate set, score components, weights/model version, women-only filter result, chosen/declined reason, and timestamps.
-- `RidePool` (future): route corridor, departure window, seat count, circle ID, operator ID, and women-only policy.
+- `RidePool`: route corridor, departure window, seat count, women-only policy, and fare share.
 - `PoolBooking` (future): rider, pool, independent pickup/dropoff/fare share, cancellation state, and independent booking state machine.
 
 ### Safety and operations
@@ -430,7 +434,7 @@ Firestore and Realtime Database are configured in one pilot Firebase project; em
 4. Security rules, emulator tests, retention/deletion, and operator drills
 5. Hardening and 3000-user load/cost gates
 
-Live booking, pooling, matching, payments, live ride location, Gemini pickup ranking, and dispatch are excluded from this pilot. Demo ride/SOS behavior remains explicitly process-memory-only. See `FIREBASE_PHASE1_PILOT.md` for rollout, data, security, and capacity details.
+Ride request/accept, ride chat, women-only pooling, nickname community, and captain location are implemented client-side through Firestore with rules-based authorization. Automated matching, payments, Gemini pickup ranking, dispatch, operator SOS escalation, and moderation tooling remain excluded. See `FIREBASE_PHASE1_PILOT.md` for rollout, data, security, and capacity details.
 
 ## 20. Approved pilot decisions
 

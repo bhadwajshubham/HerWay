@@ -2,9 +2,9 @@
 
 ## 1 Purpose + current status
 
-HerWay is an Android-first, women-focused mobility project. The repository contains Firebase identity/onboarding foundations, pending Circle requests, server-side Google Routes distance estimates, and simulated ride/SOS UI. It is not production-ready and must not be released as a live ride service.
+HerWay is a women-focused mobility app. The repository contains Firebase identity/onboarding, a Firestore-backed ride request/accept flow with live status and captain location, ride chat, women-only shared ride pools, a nickname-based community feed, and ride-linked SOS cases. It is a working prototype for a controlled pilot, not a licensed public transport service.
 
-Architecture authority: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Public Hyderabad service during staffed hours is the selected target, not an implemented capability. Live booking, matching, dispatch, payment, and operator SOS require implementation, separate security review, operational readiness, and release approval.
+Architecture authority: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). A controlled HITEC City pilot is the intended target. Automated dispatch, payments, operator SOS escalation, and captain verification policy require separate security review, operational readiness, and release approval.
 
 ## 2 Repo map
 
@@ -52,9 +52,10 @@ Current mode: `APP_MODE=demo`. Live mode is blocked in API configuration and mob
 - Theme: ink navy `#0B1F33`, teal `#116C66`, lavender capped at roughly 10% per screen.
 - i18n resources must cover English, Hindi, and Telugu from day one.
 - UI components need touch targets of at least 48 dp and accessibility labels.
-- Mobile UI uses the navy/teal/orange theme consistently; demo-only surfaces must be visibly
-  labelled and must not imply live booking or location. OpenStreetMap previews require attribution
+- Mobile UI uses the navy/teal/orange theme consistently. OpenStreetMap previews require attribution
   and provide a visible fallback on platforms where tiles cannot load.
+- Firestore rules are the authority for client-side ride, pool, chat, community, and SOS writes;
+  audit/idempotency collections remain server-only and deny all client access.
 
 ## 6 Module index
 
@@ -83,6 +84,19 @@ Current mode: `APP_MODE=demo`. Live mode is blocked in API configuration and mob
 - `apps/mobile/src/auth/firebaseClient.ts`: Firebase web client and OTP/Google provider interfaces.
 - `apps/mobile/src/auth/session.ts`: SecureStore ID-token storage.
 - `apps/mobile/src/notifications/register.ts`: permission and FCM/Expo device registration.
+- `apps/mobile/src/firebase/client.ts`: Firebase web app/auth/Firestore initialization.
+- `apps/mobile/src/firebase/rides.ts`: ride create/accept/advance/cancel, ride-scoped chat, and live subscriptions.
+- `apps/mobile/src/firebase/captains.ts`: verified captain profile creation and lookup.
+- `apps/mobile/src/firebase/liveLocation.ts`: captain location publishing and rider subscription.
+- `apps/mobile/src/firebase/pools.ts`: women-only shared ride pools with transactional join/leave/close.
+- `apps/mobile/src/firebase/community.ts`: nickname-based community posts and upvotes.
+- `apps/mobile/src/firebase/sos.ts`: ride-linked SOS case creation and resolution.
+- `apps/mobile/src/domain/trip.ts`: pure location interpolation and trip-progress helpers.
+- `apps/mobile/app/captain.tsx`: verified captain screen for accepting and advancing rides.
+- `apps/mobile/app/ride-chat.tsx`: participants-only ride chat.
+- `apps/mobile/app/ride-share.tsx`: host/join women-only shared rides.
+- `apps/mobile/app/community.tsx`: nickname-based local community feed.
+- `firestore.rules`: client authorization for rides, chat, pools, community, and SOS; audit/idempotency deny all.
 
 ## 7 Contracts index
 
@@ -101,10 +115,10 @@ Approved route intents:
 - Circles: authenticated `POST /api/v1/circles` atomically creates a pending organization request and owner membership; `GET /api/v1/circles` lists that user’s records. It does not verify employees or coordinate rides.
 - Circle discovery: `GET /api/v1/circles/available` returns only approved Circles whose domain exactly matches the caller’s verified Firebase email. `POST /api/v1/circles/:circleId/membership-requests` requires that same verified match; `GET /api/v1/circles/:circleId/membership-status` is domain-scoped; `POST /api/v1/operations/circles/:circleId/memberships/:memberUid/review` requires operator/admin claims. Raw email is not stored and membership remains pending until review. Domain membership is not driver eligibility or a safety score.
 - Scheduled ride request intake: authenticated `POST /api/v1/scheduled-rides/requests` validates requests 30 minutes to 30 days ahead and atomically stores the request with audit/idempotency; `GET /api/v1/scheduled-rides/requests` lists the user's requests; `POST /api/v1/scheduled-rides/requests/:requestId/cancel` cancels an eligible request. Every new request remains `AWAITING_OPERATOR_CONFIRMATION`; this is not a confirmed booking and does not dispatch.
-- Live ride requests, matching, payment, and dispatch are not implemented; API and store-build configuration reject live mode.
-- Shared trip route is API-rendered HTML, signed and noindex.
+- Live ride requests, captain acceptance, status transitions, chat, shared pools, and captain location are implemented client-side through Firestore with rules-based authorization (not through the API).
+- Payments, automated matching/dispatch, and operator SOS escalation are not implemented; API and store-build configuration reject live mode.
 
-No public generic ride-transition endpoint exists. Realtime Database is limited to self-owned presence in Phase 1; live ride location and Socket contracts remain later gated work.
+No public generic ride-transition API endpoint exists. Realtime Database is limited to self-owned presence in Phase 1; live ride location uses Firestore, not RTDB or Socket contracts.
 
 ## 8 Gated product features
 
@@ -112,10 +126,10 @@ These capabilities are incomplete and must not be represented as available:
 
 - **Scheduled rides:** rider request form and authenticated request/list/cancel APIs exist. Requests are limited to 30 minutes–30 days, require explicit address-use consent, and stay `AWAITING_OPERATOR_CONFIRMATION`. Operator confirmation, availability/supply reservation, outbox/Cloud Tasks, notifications, captain acceptance, and dispatch do not exist.
 - **Company/campus community:** verified-domain discovery, membership request, and operator-review APIs exist, but Circle setup starts pending and there is no coworker roster, invite management, chat, or shared-trip coordination. Community features still require moderation, consent/revocation, reporting, and audited access.
-- **Community chat:** not implemented. Define ride-scoped participants, retention, moderation/reporting, access expiry, and incident escalation before adding it; no general direct messaging is implied.
-- **Pooled rides:** not implemented. Require independent rider consent and booking state, per-rider pickup/fare/cancellation, capacity and eligibility checks, and operator ownership.
-- **Women-to-women matching:** not implemented. It requires human-verified captain eligibility and a hard server-side filter; do not infer identity with AI or from rider preference.
-- **Live rides/SOS/payments:** require durable ride state, approved citywide fleet supply, staffed operator console, and tested emergency escalation.
+- **Community chat:** ride-scoped chat is implemented in Firestore (`rideRequests/{rideId}/messages`) with participant-only access. The nickname-based community feed is implemented in `communityPosts`. Moderation/reporting, retention, access expiry, and incident escalation remain gated; no general direct messaging is implied.
+- **Pooled rides:** women-only shared pools are implemented in Firestore (`ridePools`) with transactional join/leave/close and capacity checks in rules. Independent rider consent/booking state, per-rider pickup/fare/cancellation, and operator ownership remain gated.
+- **Women-to-women matching:** captains self-declare `womenCaptain` in `captainProfiles` and rules enforce the women-only filter; human verification policy is still required. Do not infer identity with AI or from rider preference.
+- **Live rides/SOS/payments:** rider request/accept, status transitions, captain live location, and ride-linked SOS cases are implemented client-side through Firestore. Approved fleet supply, a staffed operator console, tested emergency escalation, and payments remain gated.
 - **Razorpay/payments:** optional and deferred. It is not required for the initial Firebase account, profile, consent, Circle, map, or scheduled-request pilot. Production payment/refund/reconciliation, webhook security, reconciliation, support, and launch approval must be added later if paid rides are approved.
 
 ## 8 Data model summary
@@ -181,7 +195,7 @@ The web shell and the public demo API can be healthy while sign-in, account writ
 - OpenStreetMap/Nominatim may fail due to network, rate limits, browser CSP, blocked third-party requests, or tile policy. The app must keep working with a clear offline/map-unavailable state.
 - Cloudinary credentials are absent, so profile photo upload remains unavailable.
 - FCM/Expo credentials and Android package registration are not verified.
-- Real-time live location, matching, dispatch, operator console, Razorpay, and SOS escalation are intentionally absent. UI actions that only show previews are not booking or dispatch.
+- Captain live location is implemented through Firestore (`rideRequests/{rideId}/liveLocation/current`) and requires browser geolocation permission. Automated matching, dispatch, operator console, Razorpay, and operator SOS escalation remain intentionally absent.
 
 Minimum recoverable pilot setup:
 
