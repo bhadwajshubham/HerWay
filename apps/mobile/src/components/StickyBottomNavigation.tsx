@@ -1,5 +1,5 @@
 import { usePathname, useRouter } from 'expo-router';
-import { Home, MapPin, Siren, UserRound } from 'lucide-react-native';
+import { Home, MapPin, MessagesSquare, Siren, UserRound } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 import { theme } from '../theme';
 import { SpringPressable } from './SpringPressable';
@@ -7,6 +7,7 @@ import { SpringPressable } from './SpringPressable';
 const navigationItems = [
   { label: 'Home', route: '/', Icon: Home },
   { label: 'Trip', route: '/trip-live', Icon: MapPin },
+  { label: 'Circle', route: '/community', Icon: MessagesSquare },
   { label: 'Safety', route: '/safety', Icon: Siren },
   { label: 'Profile', route: '/profile', Icon: UserRound }
 ] as const;
