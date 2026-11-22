@@ -9,11 +9,11 @@ import {
   Share2,
   ShieldCheck,
   Building2,
+  CarFront,
   Siren,
   UserRound
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { DemoBanner } from '../src/components/DemoBanner';
 import { theme } from '../src/theme';
 import { SpringPressable } from '../src/components/SpringPressable';
 import { StickyBottomNavigation } from '../src/components/StickyBottomNavigation';
@@ -54,7 +54,19 @@ export default function Index() {
               HerWay
             </Text>
           </View>
-          <DemoBanner />
+          <SpringPressable
+            onPress={() => router.push('/community')}
+            accessibilityRole="button"
+            accessibilityLabel="Open community"
+            style={{
+              borderRadius: 999,
+              backgroundColor: theme.color.tealSoft,
+              paddingHorizontal: 12,
+              paddingVertical: 7
+            }}
+          >
+            <Text style={{ color: theme.color.teal, fontSize: 12, fontWeight: '800' }}>CIRCLE</Text>
+          </SpringPressable>
         </View>
 
         <Text
@@ -206,7 +218,7 @@ export default function Index() {
             </Text>
           </SpringPressable>
           <SpringPressable
-            onPress={() => router.push('/trip-live')}
+            onPress={() => router.push('/ride-share')}
             accessibilityRole="button"
             style={{
               width: '48%',
@@ -221,7 +233,26 @@ export default function Index() {
           >
             <Share2 size={21} color={theme.color.teal} />
             <Text style={{ color: '#F5F5F7', fontSize: 14, fontWeight: '800', marginTop: 7 }}>
-              Share trip
+              Share & split
+            </Text>
+          </SpringPressable>
+          <SpringPressable
+            onPress={() => router.push('/captain')}
+            accessibilityRole="button"
+            style={{
+              width: '48%',
+              minHeight: 76,
+              borderRadius: 18,
+              backgroundColor: '#18181C',
+              borderWidth: 1,
+              borderColor: '#34343B',
+              justifyContent: 'center',
+              paddingHorizontal: 14
+            }}
+          >
+            <CarFront size={21} color={theme.color.orange} />
+            <Text style={{ color: '#F5F5F7', fontSize: 14, fontWeight: '800', marginTop: 7 }}>
+              Drive with HerWay
             </Text>
           </SpringPressable>
           <SpringPressable
@@ -286,7 +317,7 @@ export default function Index() {
                 fontWeight: '700'
               }}
             >
-              Ride booking and dispatch are not available yet. No ride is requested from this screen.
+              All rides are women-only. Captains are verified before they can accept a request.
             </Text>
           </View>
         </View>
