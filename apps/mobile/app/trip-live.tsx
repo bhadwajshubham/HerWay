@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   CarFront,
   CheckCircle2,
+  KeyRound,
   MessageCircle,
   Navigation,
   Share2,
@@ -24,68 +25,75 @@ import {
   Users
 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import type { RideRequest } from '@herway/shared';
+import type { RideStatus } from '@herway/shared';
 import { theme } from '../src/theme';
 import { SpringPressable } from '../src/components/SpringPressable';
 import { StickyBottomNavigation } from '../src/components/StickyBottomNavigation';
-import { OpenStreetMap } from '../src/components/OpenStreetMap';
 import { FadeIn, PopIn, Pulse } from '../src/components/motion';
-import { cancelRide, subscribeRide } from '../src/firebase/rides';
+import { OpenStreetMap } from '../src/components/OpenStreetMap';
+import { cancelRide, subscribeRide, type RideWithPin } from '../src/firebase/rides';
 import { subscribeLiveLocation, type LiveFix } from '../src/firebase/liveLocation';
+import { getActiveRideId } from '../src/firebase/activeRide';
 import { useIdentity } from '../src/firebase/useIdentity';
+import {
+  fetchOsrmRoute,
+  formatDistanceKm,
+  formatEtaMinutes,
+  type OsrmRouteResult
+} from '../src/domain/osrm';
 
-const DARK_DANGER = '#F87171';
-const DARK_DANGER_SOFT = 'rgba(248, 113, 113, 0.14)';
-const DARK_TEAL_SOFT = 'rgba(17, 108, 102, 0.24)';
-const DARK_ORANGE_SOFT = 'rgba(255, 106, 0, 0.18)';
-const MUTED_DARK = '#A7A7AD';
-
-const TRIP_STEPS = ['Matching', 'En route', 'Arrived', 'In transit'] as const;
+const TRIP_STEPS = ['Matched', 'En route', 'Arrived', 'In transit'] as const;
 
 const STATUS_META: Record<
-  RideRequest['status'],
-  { title: string; detail: string; tone: string; softBg: string; stepIndex: number }
+  RideStatus,
+  {
+    title: string;
+    detail: string;
+    tone: string;
+    softBg: string;
+    stepIndex: number;
+  }
 > = {
   SEARCHING: {
     title: 'Finding your captain',
     detail: 'Matching you with a verified woman captain nearby.',
     tone: theme.color.orange,
-    softBg: DARK_ORANGE_SOFT,
+    softBg: theme.color.orangeSoft,
     stepIndex: 0
   },
   DRIVER_ACCEPTED: {
     title: 'Captain on the way',
-    detail: 'Your captain accepted the ride and is heading to pickup.',
-    tone: '#2DD4BF',
-    softBg: DARK_TEAL_SOFT,
+    detail: 'Share your 4-digit Start PIN when your captain arrives.',
+    tone: theme.color.teal,
+    softBg: theme.color.tealSoft,
     stepIndex: 1
   },
   ARRIVED: {
     title: 'Captain has arrived',
-    detail: 'Check the plate number below and meet at your pickup point.',
-    tone: '#2DD4BF',
-    softBg: DARK_TEAL_SOFT,
+    detail: 'Verify the vehicle plate and share your 4-digit Start PIN to begin.',
+    tone: theme.color.teal,
+    softBg: theme.color.tealSoft,
     stepIndex: 2
   },
   IN_TRANSIT: {
     title: 'On the way',
     detail: 'You are in transit. Share your live trip with a trusted contact.',
-    tone: '#2DD4BF',
-    softBg: DARK_TEAL_SOFT,
+    tone: theme.color.teal,
+    softBg: theme.color.tealSoft,
     stepIndex: 3
   },
   COMPLETED: {
     title: 'Ride completed',
     detail: 'Thanks for riding with HerWay. Stay safe.',
-    tone: '#2DD4BF',
-    softBg: DARK_TEAL_SOFT,
+    tone: theme.color.teal,
+    softBg: theme.color.tealSoft,
     stepIndex: 4
   },
   CANCELLED: {
     title: 'Ride cancelled',
     detail: 'This ride was cancelled. Request a new one whenever you are ready.',
-    tone: DARK_DANGER,
-    softBg: DARK_DANGER_SOFT,
+    tone: theme.color.danger,
+    softBg: 'rgba(248, 113, 113, 0.14)',
     stepIndex: -1
   }
 };
@@ -95,21 +103,43 @@ export default function TripLiveScreen() {
   const params = useLocalSearchParams<{ rideId?: string }>();
   const identity = useIdentity();
 
-  const [ride, setRide] = useState<RideRequest | null>(null);
-  const [hasLoadedRide, setHasLoadedRide] = useState(!params.rideId);
+  const [resolvedRideId, setResolvedRideId] = useState<string>(params.rideId ?? '');
+  const [ride, setRide] = useState<RideWithPin | null>(null);
+  const [hasLoadedRide, setHasLoadedRide] = useState(false);
   const [liveFix, setLiveFix] = useState<LiveFix | null>(null);
+  const [route, setRoute] = useState<OsrmRouteResult | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!params.rideId) {
+    let cancelled = false;
+    if (params.rideId) {
+      setResolvedRideId(params.rideId);
+      return;
+    }
+    void getActiveRideId().then((storedId) => {
+      if (cancelled) return;
+      if (storedId) {
+        setResolvedRideId(storedId);
+      } else {
+        setHasLoadedRide(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.rideId]);
+
+  useEffect(() => {
+    if (!resolvedRideId) {
       setHasLoadedRide(true);
       return;
     }
     setHasLoadedRide(false);
+    setError('');
     const unsubscribe = subscribeRide(
-      params.rideId,
+      resolvedRideId,
       (next) => {
         setRide(next);
         setHasLoadedRide(true);
@@ -120,12 +150,29 @@ export default function TripLiveScreen() {
       }
     );
     return () => unsubscribe();
-  }, [params.rideId]);
+  }, [resolvedRideId]);
 
   useEffect(() => {
-    if (!params.rideId) return;
-    return subscribeLiveLocation(params.rideId, setLiveFix, () => undefined);
-  }, [params.rideId]);
+    if (!resolvedRideId) return;
+    return subscribeLiveLocation(resolvedRideId, setLiveFix, () => undefined);
+  }, [resolvedRideId]);
+
+  const originPoint = liveFix?.point ?? ride?.pickupPoint;
+  const destPoint = ride?.dropoffPoint;
+
+  useEffect(() => {
+    if (!originPoint || !destPoint) return;
+    if (originPoint.lat === 0 || destPoint.lat === 0) return;
+    const controller = new AbortController();
+    void fetchOsrmRoute(originPoint, destPoint, controller.signal)
+      .then((res) => setRoute(res))
+      .catch((routeErr: unknown) => {
+        if (!(routeErr instanceof Error && routeErr.name === 'AbortError')) {
+          setRoute(null);
+        }
+      });
+    return () => controller.abort();
+  }, [originPoint?.lat, originPoint?.lng, destPoint?.lat, destPoint?.lng]);
 
   const isActive = ride !== null && ride.status !== 'COMPLETED' && ride.status !== 'CANCELLED';
 
@@ -140,6 +187,9 @@ export default function TripLiveScreen() {
   const canCancel = isRider && isActive;
   const gpsAgeSec = liveFix ? Math.max(0, Math.round((now - liveFix.updatedAt) / 1000)) : null;
   const isGpsStale = gpsAgeSec !== null && gpsAgeSec > 30;
+  const showStartPin = Boolean(
+    ride && (ride.status === 'DRIVER_ACCEPTED' || ride.status === 'ARRIVED')
+  );
 
   const executeCancel = async () => {
     if (!ride || !identity.uid || cancelling) return;
@@ -188,11 +238,10 @@ export default function TripLiveScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView
-        style={{ width: '100%' }}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Bar */}
         <View style={styles.topBar}>
           <SpringPressable
             onPress={() => router.back()}
@@ -204,28 +253,33 @@ export default function TripLiveScreen() {
           </SpringPressable>
 
           <View style={styles.womenOnlyPill}>
-            <ShieldCheck size={14} color="#2DD4BF" />
+            <ShieldCheck size={14} color={theme.color.teal} />
             <Text style={styles.womenOnlyText}>WOMEN-ONLY RIDE</Text>
           </View>
         </View>
 
-        {/* Map Container with Live Overlay */}
         <FadeIn delay={40}>
           <View style={styles.mapWrapper}>
             <OpenStreetMap
               height={230}
               latitude={liveFix?.point.lat ?? ride?.pickupPoint.lat}
               longitude={liveFix?.point.lng ?? ride?.pickupPoint.lng}
+              pickup={ride?.pickupPoint}
+              dropoff={ride?.dropoffPoint}
+              routeCoordinates={route?.coordinates}
               label="Live trip map"
             />
             {isActive ? (
               <View style={styles.mapOverlayBadge}>
                 {liveFix && !isGpsStale ? (
                   <Pulse>
-                    <View style={[styles.liveDot, { backgroundColor: '#2DD4BF' }]} />
+                    <View style={[styles.liveDot, { backgroundColor: theme.color.teal }]} />
                   </Pulse>
                 ) : (
-                  <Navigation size={12} color={isGpsStale ? theme.color.orange : MUTED_DARK} />
+                  <Navigation
+                    size={12}
+                    color={isGpsStale ? theme.color.orange : theme.color.muted}
+                  />
                 )}
                 <Text style={styles.mapOverlayText}>
                   {liveFix
@@ -236,14 +290,20 @@ export default function TripLiveScreen() {
                 </Text>
               </View>
             ) : null}
+            {route ? (
+              <View style={styles.etaBadge}>
+                <Text style={styles.etaBadgeText}>
+                  {formatDistanceKm(route.distanceKm)} · ~{formatEtaMinutes(route.durationMin)}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </FadeIn>
 
-        {/* Loading State */}
-        {params.rideId && !hasLoadedRide ? (
+        {resolvedRideId && !hasLoadedRide ? (
           <View style={styles.card}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <ActivityIndicator color="#2DD4BF" />
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={theme.color.teal} />
               <View>
                 <Text style={styles.cardTitle}>Loading live trip...</Text>
                 <Text style={styles.mutedText}>Connecting to your ride status</Text>
@@ -252,33 +312,47 @@ export default function TripLiveScreen() {
           </View>
         ) : null}
 
-        {/* Empty / Not Found State */}
-        {(!params.rideId || (hasLoadedRide && !ride)) && !error ? (
+        {(!resolvedRideId || (hasLoadedRide && !ride)) && !error ? (
           <FadeIn delay={80}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>
-                {params.rideId ? 'Ride not found' : 'No active ride'}
+                {resolvedRideId ? 'Ride not found' : 'No active ride'}
               </Text>
-              <Text style={[styles.mutedText, { marginTop: 6 }]}>
-                {params.rideId
+              <Text style={[styles.mutedText, styles.spacedSix]}>
+                {resolvedRideId
                   ? 'This trip may have expired or been removed.'
-                  : 'Request a women-only ride to track your captain live here.'}
+                  : 'Request a women-only ride or open destination search to start a trip.'}
               </Text>
               <SpringPressable
-                onPress={() => router.push('/ride-request')}
+                onPress={() => router.push('/destination')}
                 accessibilityRole="button"
                 style={styles.primaryCta}
               >
-                <Text style={styles.primaryCtaText}>Request a ride</Text>
+                <Text style={styles.primaryCtaText}>Choose destination</Text>
               </SpringPressable>
             </View>
           </FadeIn>
         ) : null}
 
-        {/* Active / Completed / Cancelled Ride Content */}
         {ride && meta ? (
           <>
-            {/* Status & Route Card */}
+            {showStartPin ? (
+              <PopIn delay={60}>
+                <View style={styles.pinCard}>
+                  <View style={styles.pinIconWrap}>
+                    <KeyRound size={20} color={theme.color.teal} />
+                  </View>
+                  <View style={styles.pinCopy}>
+                    <Text style={styles.pinEyebrow}>4-DIGIT START PIN</Text>
+                    <Text style={styles.pinCode}>{ride.startPin}</Text>
+                    <Text style={styles.pinHint}>
+                      Share this PIN with your captain when you board.
+                    </Text>
+                  </View>
+                </View>
+              </PopIn>
+            ) : null}
+
             <FadeIn delay={80}>
               <View style={styles.card}>
                 <View style={styles.statusHeader}>
@@ -292,16 +366,20 @@ export default function TripLiveScreen() {
                   <Text accessibilityRole="header" style={styles.statusTitle}>
                     {meta.title}
                   </Text>
-                  <View style={[styles.statusPill, { backgroundColor: meta.softBg, borderColor: meta.tone }]}>
+                  <View
+                    style={[
+                      styles.statusPill,
+                      { backgroundColor: meta.softBg, borderColor: meta.tone }
+                    ]}
+                  >
                     <Text style={[styles.statusPillText, { color: meta.tone }]}>
                       {ride.status.replace('_', ' ')}
                     </Text>
                   </View>
                 </View>
 
-                <Text style={[styles.mutedText, { marginTop: 8 }]}>{meta.detail}</Text>
+                <Text style={[styles.mutedText, styles.spacedEight]}>{meta.detail}</Text>
 
-                {/* 4-Step Progress Bar */}
                 {meta.stepIndex >= 0 ? (
                   <View style={styles.stepperContainer}>
                     {TRIP_STEPS.map((label, idx) => {
@@ -314,14 +392,17 @@ export default function TripLiveScreen() {
                               styles.stepBar,
                               {
                                 backgroundColor:
-                                  done || current ? meta.tone : theme.color.borderDark
+                                  done || current ? meta.tone : theme.color.border
                               }
                             ]}
                           />
                           <Text
                             style={[
                               styles.stepLabel,
-                              { color: done || current ? theme.color.white : MUTED_DARK }
+                              {
+                                color:
+                                  done || current ? theme.color.white : theme.color.muted
+                              }
                             ]}
                             numberOfLines={1}
                           >
@@ -335,11 +416,10 @@ export default function TripLiveScreen() {
 
                 <View style={styles.divider} />
 
-                {/* Route Timeline */}
                 <View style={styles.routeContainer}>
                   <View style={styles.routeRow}>
                     <View style={styles.routeRail}>
-                      <View style={[styles.routeDot, { backgroundColor: '#2DD4BF' }]} />
+                      <View style={[styles.routeDot, { backgroundColor: theme.color.teal }]} />
                       <View style={styles.routeConnector} />
                     </View>
                     <View style={styles.routeTextWrap}>
@@ -350,7 +430,7 @@ export default function TripLiveScreen() {
                     </View>
                   </View>
 
-                  <View style={[styles.routeRow, { marginTop: 4 }]}>
+                  <View style={[styles.routeRow, styles.spacedFour]}>
                     <View style={styles.routeRail}>
                       <View style={[styles.routeDot, { backgroundColor: theme.color.orange }]} />
                     </View>
@@ -363,9 +443,8 @@ export default function TripLiveScreen() {
                   </View>
                 </View>
 
-                {/* Meta Footer */}
                 <View style={styles.metaRow}>
-                  <Users size={14} color={MUTED_DARK} />
+                  <Users size={14} color={theme.color.muted} />
                   <Text style={styles.metaText} numberOfLines={2}>
                     {ride.seats} {ride.seats === 1 ? 'seat' : 'seats'} · {ride.riderName}
                     {ride.note ? ` · ${ride.note}` : ''}
@@ -374,22 +453,25 @@ export default function TripLiveScreen() {
               </View>
             </FadeIn>
 
-            {/* Captain Card */}
             {ride.captain ? (
               <PopIn delay={120}>
                 <View style={styles.card}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={styles.captainRow}>
                     <View style={styles.captainAvatar}>
-                      <CarFront size={24} color="#2DD4BF" />
+                      <CarFront size={24} color={theme.color.teal} />
                     </View>
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={styles.captainInfo}>
+                      <View style={styles.captainNameRow}>
                         <Text style={styles.captainName}>{ride.captain.displayName}</Text>
-                        <CheckCircle2 size={15} color="#2DD4BF" />
+                        <CheckCircle2 size={15} color={theme.color.teal} />
                       </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                        <Star size={13} color={theme.color.orange} fill={theme.color.orange} />
-                        <Text style={[styles.mutedText, { fontSize: 13, marginLeft: 4 }]}>
+                      <View style={styles.ratingRow}>
+                        <Star
+                          size={13}
+                          color={theme.color.orange}
+                          fill={theme.color.orange}
+                        />
+                        <Text style={styles.ratingText}>
                           {ride.captain.rating.toFixed(1)} · {ride.captain.vehicle}
                         </Text>
                       </View>
@@ -403,7 +485,6 @@ export default function TripLiveScreen() {
               </PopIn>
             ) : null}
 
-            {/* Quick Actions */}
             <FadeIn delay={160}>
               <View style={styles.actionsRow}>
                 <SpringPressable
@@ -413,7 +494,7 @@ export default function TripLiveScreen() {
                   accessibilityRole="button"
                   style={styles.actionTile}
                 >
-                  <MessageCircle size={21} color="#2DD4BF" />
+                  <MessageCircle size={21} color={theme.color.teal} />
                   <Text style={styles.actionLabel}>Ride chat</Text>
                 </SpringPressable>
 
@@ -422,8 +503,10 @@ export default function TripLiveScreen() {
                   accessibilityRole="button"
                   style={[styles.actionTile, styles.safetyTile]}
                 >
-                  <Siren size={21} color={DARK_DANGER} />
-                  <Text style={[styles.actionLabel, { color: DARK_DANGER }]}>Safety SOS</Text>
+                  <Siren size={21} color={theme.color.danger} />
+                  <Text style={[styles.actionLabel, { color: theme.color.danger }]}>
+                    Safety SOS
+                  </Text>
                 </SpringPressable>
 
                 <SpringPressable
@@ -431,34 +514,32 @@ export default function TripLiveScreen() {
                   accessibilityRole="button"
                   style={styles.actionTile}
                 >
-                  <Share2 size={21} color="#2DD4BF" />
+                  <Share2 size={21} color={theme.color.teal} />
                   <Text style={styles.actionLabel}>Share trip</Text>
                 </SpringPressable>
               </View>
             </FadeIn>
 
-            {/* Cancel Button */}
             {canCancel ? (
               <SpringPressable
                 onPress={handleCancel}
                 disabled={cancelling}
                 accessibilityRole="button"
-                style={[styles.cancelButton, cancelling && { opacity: 0.6 }]}
+                style={[styles.cancelButton, cancelling && styles.disabledBtn]}
               >
                 {cancelling ? (
-                  <ActivityIndicator size="small" color={DARK_DANGER} />
+                  <ActivityIndicator size="small" color={theme.color.danger} />
                 ) : (
                   <Text style={styles.cancelText}>Cancel ride</Text>
                 )}
               </SpringPressable>
             ) : null}
 
-            {/* Terminal State CTA */}
             {ride.status === 'COMPLETED' || ride.status === 'CANCELLED' ? (
               <FadeIn delay={80}>
                 <View style={styles.terminalCard}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ShieldCheck size={20} color="#2DD4BF" />
+                  <View style={styles.terminalRow}>
+                    <ShieldCheck size={20} color={theme.color.teal} />
                     <Text style={styles.terminalText}>
                       {ride.status === 'COMPLETED'
                         ? 'Ride complete. Request another women-only ride anytime.'
@@ -466,9 +547,9 @@ export default function TripLiveScreen() {
                     </Text>
                   </View>
                   <SpringPressable
-                    onPress={() => router.push('/ride-request')}
+                    onPress={() => router.push('/destination')}
                     accessibilityRole="button"
-                    style={[styles.primaryCta, { marginTop: 14 }]}
+                    style={[styles.primaryCta, styles.spacedFourteen]}
                   >
                     <Text style={styles.primaryCtaText}>Book another ride</Text>
                   </SpringPressable>
@@ -478,10 +559,9 @@ export default function TripLiveScreen() {
           </>
         ) : null}
 
-        {/* Error Banner */}
         {error ? (
           <View accessibilityRole="alert" style={styles.errorBanner}>
-            <AlertCircle size={16} color={DARK_DANGER} />
+            <AlertCircle size={16} color={theme.color.danger} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
@@ -494,13 +574,15 @@ export default function TripLiveScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.color.surfaceDark
+    backgroundColor: theme.color.surface
+  },
+  scroll: {
+    width: '100%'
   },
   scrollContent: {
     width: '100%',
-    maxWidth: 760,
-    alignSelf: 'center',
-    padding: 20,
+    paddingHorizontal: theme.layout.screenPadding,
+    paddingTop: 16,
     paddingBottom: 112
   },
   topBar: {
@@ -511,10 +593,10 @@ const styles = StyleSheet.create({
   iconButton: {
     width: theme.touchTarget,
     height: theme.touchTarget,
-    borderRadius: 16,
-    backgroundColor: theme.color.surfaceDarkRaised,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surfaceRaised,
     borderWidth: 1,
-    borderColor: theme.color.borderDark,
+    borderColor: theme.color.border,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -522,17 +604,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
-    backgroundColor: DARK_TEAL_SOFT,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.color.tealSoft,
     borderWidth: 1,
     borderColor: 'rgba(45, 212, 191, 0.3)',
     paddingHorizontal: 12,
     paddingVertical: 7
   },
   womenOnlyText: {
-    color: '#2DD4BF',
-    fontSize: 12,
-    fontWeight: '800',
+    color: theme.color.teal,
+    fontSize: 11,
+    fontFamily: theme.font.bold,
     letterSpacing: 0.4
   },
   mapWrapper: {
@@ -546,10 +628,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: 'rgba(13, 13, 15, 0.86)',
+    backgroundColor: 'rgba(13, 13, 15, 0.88)',
     borderWidth: 1,
-    borderColor: theme.color.borderDark,
-    borderRadius: 999,
+    borderColor: theme.color.border,
+    borderRadius: theme.radius.pill,
     paddingHorizontal: 12,
     paddingVertical: 6
   },
@@ -561,51 +643,126 @@ const styles = StyleSheet.create({
   mapOverlayText: {
     color: theme.color.white,
     fontSize: 12,
-    fontWeight: '700'
+    fontFamily: theme.font.semibold
+  },
+  etaBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    backgroundColor: 'rgba(13, 13, 15, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.4)',
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 11,
+    paddingVertical: 5
+  },
+  etaBadgeText: {
+    color: theme.color.teal,
+    fontSize: 11,
+    fontFamily: theme.font.bold
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
   },
   card: {
     marginTop: 14,
-    borderRadius: 22,
-    backgroundColor: theme.color.surfaceDarkRaised,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.surfaceRaised,
     borderWidth: 1,
-    borderColor: theme.color.borderDark,
-    padding: 18
+    borderColor: theme.color.border,
+    padding: 16
+  },
+  pinCard: {
+    marginTop: 14,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.tealSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.45)',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  pinIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.surface,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  pinCopy: {
+    flex: 1
+  },
+  pinEyebrow: {
+    color: theme.color.teal,
+    fontSize: 11,
+    fontFamily: theme.font.bold,
+    letterSpacing: 0.6
+  },
+  pinCode: {
+    color: theme.color.white,
+    fontSize: 26,
+    fontFamily: theme.font.bold,
+    letterSpacing: 6,
+    marginTop: 2
+  },
+  pinHint: {
+    color: theme.color.muted,
+    fontSize: 12,
+    fontFamily: theme.font.regular,
+    marginTop: 2
   },
   cardTitle: {
     color: theme.color.white,
-    fontSize: 19,
-    fontWeight: '800'
+    fontSize: 18,
+    fontFamily: theme.font.bold
   },
   mutedText: {
-    color: MUTED_DARK,
-    fontSize: 14,
-    lineHeight: 20
+    color: theme.color.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: theme.font.regular
+  },
+  spacedFour: {
+    marginTop: 4
+  },
+  spacedSix: {
+    marginTop: 6
+  },
+  spacedEight: {
+    marginTop: 8
+  },
+  spacedFourteen: {
+    marginTop: 14
   },
   statusHeader: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   statusDot: {
-    width: 11,
-    height: 11,
-    borderRadius: 6
+    width: 10,
+    height: 10,
+    borderRadius: 5
   },
   statusTitle: {
     color: theme.color.white,
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: 18,
+    fontFamily: theme.font.bold,
     marginLeft: 10,
     flex: 1
   },
   statusPill: {
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 4
   },
   statusPillText: {
-    fontSize: 11,
-    fontWeight: '800'
+    fontSize: 10,
+    fontFamily: theme.font.bold
   },
   stepperContainer: {
     flexDirection: 'row',
@@ -621,13 +778,13 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: theme.font.semibold,
     marginTop: 6
   },
   divider: {
     height: 1,
-    backgroundColor: theme.color.borderDark,
-    marginVertical: 16
+    backgroundColor: theme.color.border,
+    marginVertical: 14
   },
   routeContainer: {
     gap: 2
@@ -649,7 +806,7 @@ const styles = StyleSheet.create({
   routeConnector: {
     width: 2,
     height: 28,
-    backgroundColor: theme.color.borderDark,
+    backgroundColor: theme.color.border,
     marginTop: 4
   },
   routeTextWrap: {
@@ -657,15 +814,15 @@ const styles = StyleSheet.create({
     marginLeft: 8
   },
   microLabel: {
-    color: MUTED_DARK,
+    color: theme.color.muted,
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: theme.font.bold,
     letterSpacing: 0.8
   },
   routeAddress: {
     color: theme.color.white,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: theme.font.semibold,
     marginTop: 2
   },
   metaRow: {
@@ -675,44 +832,69 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(52, 52, 59, 0.6)'
+    borderTopColor: theme.color.border
   },
   metaText: {
-    color: MUTED_DARK,
-    fontSize: 13,
+    color: theme.color.muted,
+    fontSize: 12,
+    fontFamily: theme.font.regular,
     flex: 1
   },
+  captainRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
   captainAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: DARK_TEAL_SOFT,
+    width: 50,
+    height: 50,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.tealSoft,
     alignItems: 'center',
     justifyContent: 'center'
   },
+  captainInfo: {
+    flex: 1,
+    marginLeft: 12
+  },
+  captainNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
   captainName: {
     color: theme.color.white,
-    fontSize: 17,
-    fontWeight: '800'
+    fontSize: 16,
+    fontFamily: theme.font.bold
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4
+  },
+  ratingText: {
+    color: theme.color.muted,
+    fontSize: 12,
+    fontFamily: theme.font.regular,
+    marginLeft: 4
   },
   plateBadge: {
-    borderRadius: 12,
-    backgroundColor: theme.color.surfaceDark,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.surface,
     borderWidth: 1,
-    borderColor: theme.color.borderDark,
+    borderColor: theme.color.border,
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignItems: 'center'
   },
   plateLabel: {
-    color: MUTED_DARK,
+    color: theme.color.muted,
     fontSize: 9,
-    fontWeight: '800',
+    fontFamily: theme.font.bold,
     letterSpacing: 0.8
   },
   plateText: {
     color: theme.color.white,
-    fontWeight: '900',
+    fontFamily: theme.font.bold,
     fontSize: 13,
     marginTop: 1
   },
@@ -724,72 +906,79 @@ const styles = StyleSheet.create({
   actionTile: {
     flex: 1,
     minHeight: 68,
-    borderRadius: 18,
-    backgroundColor: theme.color.surfaceDarkRaised,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surfaceRaised,
     borderWidth: 1,
-    borderColor: theme.color.borderDark,
+    borderColor: theme.color.border,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10
   },
   safetyTile: {
-    backgroundColor: DARK_DANGER_SOFT,
+    backgroundColor: 'rgba(248, 113, 113, 0.14)',
     borderColor: 'rgba(248, 113, 113, 0.35)'
   },
   actionLabel: {
     color: theme.color.white,
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: theme.font.bold,
     marginTop: 6
   },
   primaryCta: {
-    marginTop: 16,
-    minHeight: 52,
-    borderRadius: 14,
-    backgroundColor: theme.color.orange,
+    marginTop: 14,
+    minHeight: 50,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.teal,
     alignItems: 'center',
     justifyContent: 'center'
   },
   primaryCtaText: {
-    color: theme.color.white,
-    fontWeight: '900',
-    fontSize: 15
+    color: theme.color.textOnAccent,
+    fontFamily: theme.font.bold,
+    fontSize: 14
   },
   cancelButton: {
-    marginTop: 16,
-    minHeight: 52,
-    borderRadius: 14,
+    marginTop: 14,
+    minHeight: 50,
+    borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(248, 113, 113, 0.5)',
-    backgroundColor: DARK_DANGER_SOFT,
+    backgroundColor: 'rgba(248, 113, 113, 0.14)',
     alignItems: 'center',
     justifyContent: 'center'
   },
+  disabledBtn: {
+    opacity: 0.6
+  },
   cancelText: {
-    color: DARK_DANGER,
+    color: theme.color.danger,
     fontSize: 14,
-    fontWeight: '800'
+    fontFamily: theme.font.bold
   },
   terminalCard: {
-    marginTop: 16,
-    borderRadius: 20,
-    backgroundColor: theme.color.surfaceDarkRaised,
+    marginTop: 14,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.surfaceRaised,
     borderWidth: 1,
-    borderColor: theme.color.borderDark,
+    borderColor: theme.color.border,
     padding: 16
+  },
+  terminalRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
   },
   terminalText: {
     flex: 1,
     marginLeft: 10,
     color: theme.color.white,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: theme.font.semibold,
     lineHeight: 19
   },
   errorBanner: {
     marginTop: 14,
-    borderRadius: 14,
-    backgroundColor: DARK_DANGER_SOFT,
+    borderRadius: theme.radius.lg,
+    backgroundColor: 'rgba(248, 113, 113, 0.14)',
     borderWidth: 1,
     borderColor: 'rgba(248, 113, 113, 0.35)',
     padding: 12,
@@ -798,9 +987,9 @@ const styles = StyleSheet.create({
     gap: 8
   },
   errorText: {
-    color: DARK_DANGER,
+    color: theme.color.danger,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: theme.font.semibold,
     flex: 1
   }
 });

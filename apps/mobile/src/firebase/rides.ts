@@ -22,6 +22,7 @@ import {
   type RideStatus
 } from '@herway/shared';
 import { getFirestoreDb } from './client';
+import { setActiveRideId } from './activeRide';
 
 const RIDES = 'rideRequests';
 const CHAT = 'messages';
@@ -35,13 +36,30 @@ export interface CreateRideInput extends RideRequestCreate {
   riderName: string;
 }
 
+export type RideWithPin = RideRequest & {
+  startPin: string;
+};
+
+function generateStartPin(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function deriveFallbackPin(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) % 9000;
+  }
+  return String(1000 + Math.abs(hash));
+}
+
 function toMillis(value: unknown): number {
   if (value instanceof Timestamp) return value.toMillis();
   if (typeof value === 'number') return value;
   return 0;
 }
 
-function mapRide(id: string, data: Record<string, unknown>): RideRequest {
+function mapRide(id: string, data: Record<string, unknown>): RideWithPin {
+  const rawPin = typeof data.startPin === 'string' ? data.startPin.trim() : '';
   return {
     rideId: id,
     riderUid: String(data.riderUid ?? ''),
@@ -56,6 +74,7 @@ function mapRide(id: string, data: Record<string, unknown>): RideRequest {
     note: typeof data.note === 'string' ? data.note : undefined,
     status: (data.status as RideStatus) ?? 'SEARCHING',
     captain: (data.captain as Captain | null) ?? null,
+    startPin: /^[0-9]{4}$/.test(rawPin) ? rawPin : deriveFallbackPin(id),
     createdAt: toMillis(data.createdAt),
     updatedAt: toMillis(data.updatedAt)
   };
@@ -66,6 +85,7 @@ export async function createRide(
   input: CreateRideInput
 ): Promise<string> {
   const db = getFirestoreDb();
+  const startPin = generateStartPin();
   const ref = await addDoc(collection(db, RIDES), {
     riderUid: actor.uid,
     riderName: input.riderName,
@@ -79,14 +99,16 @@ export async function createRide(
     note: input.note ?? null,
     status: 'SEARCHING',
     captain: null,
+    startPin,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
+  await setActiveRideId(ref.id);
   return ref.id;
 }
 
 export function subscribeOpenRides(
-  onChange: (rides: RideRequest[]) => void,
+  onChange: (rides: RideWithPin[]) => void,
   onError?: (error: Error) => void
 ): Unsubscribe {
   const db = getFirestoreDb();
@@ -107,7 +129,7 @@ export function subscribeOpenRides(
 
 export function subscribeRide(
   rideId: string,
-  onChange: (ride: RideRequest | null) => void,
+  onChange: (ride: RideWithPin | null) => void,
   onError?: (error: Error) => void
 ): Unsubscribe {
   const db = getFirestoreDb();
@@ -122,7 +144,7 @@ export function subscribeRide(
 
 export function subscribeMyRides(
   uid: string,
-  onChange: (rides: RideRequest[]) => void,
+  onChange: (rides: RideWithPin[]) => void,
   onError?: (error: Error) => void
 ): Unsubscribe {
   const db = getFirestoreDb();
@@ -156,12 +178,14 @@ export async function acceptRide(
       updatedAt: serverTimestamp()
     });
   });
+  await setActiveRideId(rideId);
 }
 
 export async function advanceRide(
   rideId: string,
   from: RideStatus,
-  actorUid: string
+  actorUid: string,
+  enteredPin?: string
 ): Promise<RideStatus> {
   const target = nextRideStatus(from);
   if (!target) throw new Error('Ride cannot advance from its current status');
@@ -175,8 +199,17 @@ export async function advanceRide(
     if (data.status !== from) throw new Error('Ride status changed; refresh');
     const captain = data.captain as Captain | null;
     if (captain?.uid !== actorUid) throw new Error('Only the assigned captain can advance this ride');
+    if (from === 'ARRIVED' && target === 'IN_TRANSIT') {
+      const mapped = mapRide(snapshot.id, data);
+      if ((enteredPin ?? '').trim() !== mapped.startPin) {
+        throw new Error('Invalid 4-digit Start PIN. Ask the rider for their code.');
+      }
+    }
     transaction.update(ref, { status: target, updatedAt: serverTimestamp() });
   });
+  if (target === 'COMPLETED') {
+    await setActiveRideId(null);
+  }
   return target;
 }
 
@@ -197,6 +230,7 @@ export async function cancelRide(rideId: string, actorUid: string): Promise<void
     }
     transaction.update(ref, { status: 'CANCELLED', updatedAt: serverTimestamp() });
   });
+  await setActiveRideId(null);
 }
 
 export async function sendRideMessage(
