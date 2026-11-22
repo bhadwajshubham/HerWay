@@ -1,178 +1,287 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  View
-} from 'react-native';
-import { ArrowLeft, Send, ShieldCheck } from 'lucide-react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import type { RideChatMessage } from '@herway/shared';
+import { useEffect, useState } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Globe2, LogOut, ShieldCheck, UserRound } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { readFirebaseIdToken } from '../src/auth/session';
+import { getApiUrl } from '../src/config/apiUrl';
 import { theme } from '../src/theme';
+import { ScreenHeader } from '../src/components/ScreenHeader';
 import { SpringPressable } from '../src/components/SpringPressable';
-import { FadeIn } from '../src/components/motion';
-import { sendRideMessage, subscribeRideMessages } from '../src/firebase/rides';
-import { useIdentity } from '../src/firebase/useIdentity';
+import { StickyBottomNavigation } from '../src/components/StickyBottomNavigation';
 
-export default function RideChatScreen() {
+const LANGUAGES = ['English', 'Hindi', 'Telugu'] as const;
+
+export default function ProfileScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ rideId?: string }>();
-  const identity = useIdentity();
-  const [messages, setMessages] = useState<RideChatMessage[]>([]);
-  const [draft, setDraft] = useState('');
-  const [status, setStatus] = useState('');
-  const scrollRef = useRef<ScrollView>(null);
+  const [womenOnly, setWomenOnly] = useState(true);
+  const [displayName, setDisplayName] = useState('Rider');
+  const [languageIndex, setLanguageIndex] = useState(0);
 
   useEffect(() => {
-    if (!params.rideId) return;
-    return subscribeRideMessages(
-      params.rideId,
-      setMessages,
-      (error) => setStatus(error.message)
-    );
-  }, [params.rideId]);
-
-  useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages.length]);
-
-  const onSend = useCallback(async () => {
-    const body = draft.trim();
-    if (!body || !params.rideId || !identity.ready) {
-      setStatus('Sign in to send a message.');
-      return;
-    }
-    setDraft('');
-    setStatus('');
-    try {
-      await sendRideMessage(
-        params.rideId,
-        { uid: identity.uid, displayName: identity.displayName },
-        body
+    let active = true;
+    const loadProfile = async () => {
+      const token = await readFirebaseIdToken();
+      if (!token) return;
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/api/v1/me`, {
+        headers: { authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) return;
+      const payload = (await response.json()) as {
+        displayName?: string | null;
+        preferredLanguage?: 'en' | 'hi' | 'te';
+      };
+      if (!active) return;
+      if (payload.displayName) setDisplayName(payload.displayName);
+      setLanguageIndex(
+        payload.preferredLanguage === 'hi' ? 1 : payload.preferredLanguage === 'te' ? 2 : 0
       );
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Could not send the message.');
-    }
-  }, [draft, identity, params.rideId]);
+    };
+    void loadProfile();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const cycleLanguage = () => {
+    setLanguageIndex((current) => (current + 1) % LANGUAGES.length);
+  };
+
+  const language = LANGUAGES[languageIndex] ?? 'English';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surfaceDark }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 12,
-            paddingBottom: 12,
-            borderBottomWidth: 1,
-            borderColor: '#34343B'
-          }}
-        >
-          <SpringPressable
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            style={{ width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <ArrowLeft size={22} color={theme.color.white} />
-          </SpringPressable>
-          <View style={{ marginLeft: 10, flex: 1 }}>
-            <Text style={{ color: theme.color.white, fontSize: 18, fontWeight: '900' }}>Ride chat</Text>
-            <Text style={{ color: '#A7A7AD', fontSize: 12 }}>Only you and your captain</Text>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <ScreenHeader badge="HERWAY PROFILE" tone="teal" />
+
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <UserRound size={28} color={theme.color.teal} />
           </View>
-          <ShieldCheck size={20} color={theme.color.teal} />
+          <View style={styles.profileCopy}>
+            <Text accessibilityRole="header" style={styles.profileName}>
+              {displayName}
+            </Text>
+            <Text style={styles.profileSub}>Verified HerWay member · HITEC City</Text>
+          </View>
         </View>
 
-        <ScrollView
-          ref={scrollRef}
-          style={{ flex: 1, paddingHorizontal: 20 }}
-          contentContainerStyle={{ paddingVertical: 16, gap: 10 }}
-        >
-          {messages.length === 0 ? (
-            <Text style={{ color: '#A7A7AD', textAlign: 'center', marginTop: 40 }}>
-              Say hello to your captain. Messages are visible only to this ride.
-            </Text>
-          ) : null}
-          {messages.map((message, index) => {
-            const mine = message.senderUid === identity.uid;
-            return (
-              <FadeIn key={message.messageId} delay={Math.min(index, 6) * 30}>
-                <View
-                  style={{
-                    alignSelf: mine ? 'flex-end' : 'flex-start',
-                    maxWidth: '82%',
-                    borderRadius: 18,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    backgroundColor: mine ? theme.color.teal : theme.color.surfaceDarkRaised,
-                    borderWidth: mine ? 0 : 1,
-                    borderColor: '#34343B'
-                  }}
-                >
-                  <Text style={{ color: theme.color.white, fontSize: 12, fontWeight: '800' }}>
-                    {mine ? 'You' : message.senderName}
-                  </Text>
-                  <Text style={{ color: theme.color.white, fontSize: 15, marginTop: 3 }}>
-                    {message.body}
-                  </Text>
-                </View>
-              </FadeIn>
-            );
-          })}
-        </ScrollView>
+        <Text style={styles.sectionTitle}>Ride & commute preferences</Text>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            padding: 16,
-            borderTopWidth: 1,
-            borderColor: '#34343B'
-          }}
-        >
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Message your captain"
-            placeholderTextColor="#6C6C75"
-            onSubmitEditing={() => void onSend()}
-            style={{
-              flex: 1,
-              minHeight: 48,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: '#34343B',
-              backgroundColor: theme.color.surfaceDarkRaised,
-              color: theme.color.white,
-              paddingHorizontal: 14
-            }}
-          />
+        <View style={styles.prefCard}>
           <SpringPressable
-            onPress={() => void onSend()}
-            accessibilityRole="button"
-            accessibilityLabel="Send message"
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 16,
-              backgroundColor: theme.color.orange,
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
+            onPress={() => setWomenOnly((value) => !value)}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: womenOnly }}
+            style={styles.prefRow}
           >
-            <Send size={20} color={theme.color.white} />
+            <View style={styles.iconBoxTeal}>
+              <ShieldCheck size={20} color={theme.color.teal} />
+            </View>
+            <View style={styles.prefCopy}>
+              <Text style={styles.prefTitle}>Women-only rides</Text>
+              <Text style={styles.prefDetail}>Required for every HerWay ride & pool</Text>
+            </View>
+            <View style={[styles.switchTrack, womenOnly && styles.switchTrackOn]}>
+              <View style={[styles.switchThumb, womenOnly && styles.switchThumbOn]} />
+            </View>
+          </SpringPressable>
+
+          <View style={styles.rowDivider} />
+
+          <SpringPressable
+            onPress={cycleLanguage}
+            accessibilityRole="button"
+            accessibilityLabel="Cycle preferred language"
+            style={styles.prefRow}
+          >
+            <View style={styles.iconBoxOrange}>
+              <Globe2 size={20} color={theme.color.orange} />
+            </View>
+            <View style={styles.prefCopy}>
+              <Text style={styles.prefTitle}>Language</Text>
+              <Text style={styles.prefDetail}>{language} · Tap to switch</Text>
+            </View>
+            <Text style={styles.langPill}>{language}</Text>
           </SpringPressable>
         </View>
-        {status ? (
-          <Text accessibilityRole="alert" style={{ color: theme.color.danger, paddingHorizontal: 16 }}>
-            {status}
-          </Text>
-        ) : null}
-      </KeyboardAvoidingView>
+
+        <SpringPressable
+          onPress={() => router.push('/auth')}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.signInBtn, pressed && styles.pressed]}
+        >
+          <LogOut size={18} color={theme.color.white} />
+          <Text style={styles.signInBtnText}>Manage account / sign-in</Text>
+        </SpringPressable>
+      </ScrollView>
+      <StickyBottomNavigation />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.color.surface
+  },
+  scroll: {
+    width: '100%'
+  },
+  content: {
+    width: '100%',
+    paddingHorizontal: theme.layout.screenPadding,
+    paddingTop: 16,
+    paddingBottom: 112
+  },
+  profileCard: {
+    marginTop: 20,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.surfaceRaised,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  avatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: theme.color.tealSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  profileCopy: {
+    flex: 1,
+    marginLeft: 14
+  },
+  profileName: {
+    color: theme.color.white,
+    fontSize: 19,
+    fontFamily: theme.font.bold
+  },
+  profileSub: {
+    color: theme.color.muted,
+    fontSize: 12,
+    fontFamily: theme.font.regular,
+    marginTop: 3
+  },
+  sectionTitle: {
+    color: theme.color.white,
+    fontSize: 16,
+    fontFamily: theme.font.bold,
+    marginTop: 22,
+    marginBottom: 12
+  },
+  prefCard: {
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.surfaceRaised,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    overflow: 'hidden'
+  },
+  prefRow: {
+    minHeight: 70,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 12
+  },
+  iconBoxTeal: {
+    width: 42,
+    height: 42,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.tealSoft,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  iconBoxOrange: {
+    width: 42,
+    height: 42,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.orangeSoft,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  prefCopy: {
+    flex: 1
+  },
+  prefTitle: {
+    color: theme.color.white,
+    fontSize: 15,
+    fontFamily: theme.font.bold
+  },
+  prefDetail: {
+    color: theme.color.muted,
+    fontSize: 12,
+    fontFamily: theme.font.regular,
+    marginTop: 2
+  },
+  switchTrack: {
+    width: 46,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.color.surface,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    justifyContent: 'center',
+    paddingHorizontal: 3
+  },
+  switchTrackOn: {
+    backgroundColor: theme.color.teal,
+    borderColor: theme.color.teal
+  },
+  switchThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: theme.color.muted,
+    alignSelf: 'flex-start'
+  },
+  switchThumbOn: {
+    backgroundColor: theme.color.textOnAccent,
+    alignSelf: 'flex-end'
+  },
+  rowDivider: {
+    height: 1,
+    backgroundColor: theme.color.border,
+    marginHorizontal: 14
+  },
+  langPill: {
+    color: theme.color.teal,
+    fontSize: 12,
+    fontFamily: theme.font.bold,
+    backgroundColor: theme.color.tealSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: theme.radius.pill
+  },
+  signInBtn: {
+    minHeight: 52,
+    marginTop: 18,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surfaceRaised,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9
+  },
+  signInBtnText: {
+    color: theme.color.white,
+    fontSize: 14,
+    fontFamily: theme.font.bold
+  },
+  pressed: {
+    opacity: 0.88
+  }
+});

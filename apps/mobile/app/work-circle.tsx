@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, ScrollView, Text, View } from 'react-native';
-import { ArrowLeft, Building2, RefreshCw, ShieldCheck, Users } from 'lucide-react-native';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Building2, RefreshCw, ShieldCheck, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { readFirebaseIdToken } from '../src/auth/session';
 import { getApiUrl } from '../src/config/apiUrl';
 import { AvailableCirclesResponseSchema, MembershipRequestResponseSchema } from '@herway/shared';
 import { theme } from '../src/theme';
+import { ScreenHeader } from '../src/components/ScreenHeader';
 import { SpringPressable } from '../src/components/SpringPressable';
 import { StickyBottomNavigation } from '../src/components/StickyBottomNavigation';
 
@@ -29,7 +30,10 @@ function parseCirclesResponse(value: unknown): Circle[] | null {
       circleId: circle.circleId,
       name: 'name' in circle && typeof circle.name === 'string' ? circle.name : undefined,
       status: 'status' in circle && typeof circle.status === 'string' ? circle.status : undefined,
-      membershipStatus: 'membershipStatus' in circle && typeof circle.membershipStatus === 'string' ? circle.membershipStatus : undefined,
+      membershipStatus:
+        'membershipStatus' in circle && typeof circle.membershipStatus === 'string'
+          ? circle.membershipStatus
+          : undefined,
       role: 'role' in circle && typeof circle.role === 'string' ? circle.role : undefined
     });
   }
@@ -80,12 +84,14 @@ export default function WorkCircleScreen() {
         if (!available.success) {
           setDiscoverError('The server returned an invalid Work Circle list.');
         } else {
-          setAvailableCircles(available.data.circles.map((circle) => ({
-            circleId: circle.circleId,
-            name: circle.name,
-            status: 'approved',
-            membershipStatus: circle.membershipStatus
-          })));
+          setAvailableCircles(
+            available.data.circles.map((circle) => ({
+              circleId: circle.circleId,
+              name: circle.name,
+              status: 'approved',
+              membershipStatus: circle.membershipStatus
+            }))
+          );
           setDiscoverError('');
         }
       }
@@ -121,9 +127,11 @@ export default function WorkCircleScreen() {
       );
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok) {
-        setDiscoverError(response.status === 409
-          ? 'A membership request already exists or your access is already approved.'
-          : 'Membership could not be requested. Check your verified work email and retry.');
+        setDiscoverError(
+          response.status === 409
+            ? 'A membership request already exists or your access is already approved.'
+            : 'Membership could not be requested. Check your verified work email and retry.'
+        );
         return;
       }
       const parsed = MembershipRequestResponseSchema.safeParse(body);
@@ -149,87 +157,312 @@ export default function WorkCircleScreen() {
   }, [loadCircles]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surfaceDark }}>
+    <SafeAreaView style={styles.screen}>
       <ScrollView
-        style={{ width: '100%' }}
-        contentContainerStyle={{
-          width: '100%',
-          maxWidth: 760,
-          alignSelf: 'center',
-          padding: 20,
-          paddingBottom: 112
-        }}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <SpringPressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: theme.color.surfaceDarkRaised, alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={22} color={theme.color.white} />
-        </SpringPressable>
-        <Text accessibilityRole="header" style={{ color: theme.color.white, fontSize: 30, fontWeight: '800', marginTop: 24 }}>Work Circles</Text>
-        <Text style={{ color: '#A7A7AD', fontSize: 14, lineHeight: 21, marginTop: 8 }}>
-          Request access to your workplace or campus. Membership stays private until an organization is verified.
+        <ScreenHeader badge="WORK CIRCLE" tone="teal" />
+
+        <Text accessibilityRole="header" style={styles.title}>
+          Work Circles
+        </Text>
+        <Text style={styles.subtitle}>
+          Request access to your workplace or campus. Membership stays private until an organization
+          is verified.
         </Text>
 
-        <View style={{ marginTop: 20, borderRadius: 22, backgroundColor: theme.color.surfaceDarkRaised, borderWidth: 1, borderColor: '#34343B', padding: 18 }}>
-          <Building2 size={24} color={theme.color.teal} />
-          <Text style={{ color: theme.color.white, fontSize: 17, fontWeight: '900', marginTop: 12 }}>Your organizations</Text>
+        <View style={styles.card}>
+          <View style={styles.cardIconWrap}>
+            <Building2 size={21} color={theme.color.teal} />
+          </View>
+          <Text style={styles.cardTitle}>Your organizations</Text>
+
           {loading ? (
-            <ActivityIndicator accessibilityLabel="Loading organizations" color={theme.color.teal} style={{ marginTop: 18 }} />
+            <ActivityIndicator
+              accessibilityLabel="Loading organizations"
+              color={theme.color.teal}
+              style={styles.loader}
+            />
           ) : error ? (
             <View>
-              <Text accessibilityRole="alert" style={{ color: '#FFD0AA', marginTop: 10 }}>{error}</Text>
-              <SpringPressable onPress={() => void loadCircles()} accessibilityRole="button" style={{ minHeight: 48, marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <RefreshCw size={16} color={theme.color.teal} /><Text style={{ color: theme.color.teal, fontWeight: '800' }}>Retry</Text>
+              <Text accessibilityRole="alert" style={styles.warningText}>
+                {error}
+              </Text>
+              <SpringPressable
+                onPress={() => void loadCircles()}
+                accessibilityRole="button"
+                style={styles.retryBtn}
+              >
+                <RefreshCw size={15} color={theme.color.teal} />
+                <Text style={styles.retryText}>Retry</Text>
               </SpringPressable>
             </View>
           ) : circles.length === 0 ? (
-            <Text style={{ color: '#A7A7AD', lineHeight: 20, marginTop: 8 }}>You haven’t requested access to an organization yet.</Text>
+            <Text style={styles.emptyText}>
+              You haven&apos;t requested access to an organization yet.
+            </Text>
           ) : (
             circles.map((circle) => (
-              <View key={circle.circleId} style={{ borderTopWidth: 1, borderTopColor: '#34343B', marginTop: 14, paddingTop: 14 }}>
-                <Text style={{ color: theme.color.white, fontSize: 15, fontWeight: '800' }}>{circle.name ?? 'Organization'}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                  <ShieldCheck size={15} color={theme.color.teal} />
-                  <Text style={{ color: theme.color.teal, fontSize: 12, fontWeight: '700' }}>Request {circle.status ?? 'pending'} · membership {circle.membershipStatus ?? 'pending'}</Text>
+              <View key={circle.circleId} style={styles.rowDivider}>
+                <Text style={styles.orgName}>{circle.name ?? 'Organization'}</Text>
+                <View style={styles.statusRow}>
+                  <ShieldCheck size={14} color={theme.color.teal} />
+                  <Text style={styles.statusLabel}>
+                    Request {circle.status ?? 'pending'} · membership{' '}
+                    {circle.membershipStatus ?? 'pending'}
+                  </Text>
                 </View>
               </View>
             ))
           )}
         </View>
 
-        <View style={{ marginTop: 14, borderRadius: 22, backgroundColor: theme.color.surfaceDarkRaised, borderWidth: 1, borderColor: '#34343B', padding: 18 }}>
-          <Text style={{ color: theme.color.white, fontSize: 17, fontWeight: '900' }}>Your verified company Circle</Text>
-          <Text style={{ color: '#A7A7AD', fontSize: 12, lineHeight: 18, marginTop: 5 }}>
-            Only approved organizations matching your verified company email appear here. No coworker roster is shown.
+        <View style={styles.card}>
+          <Text style={styles.cardTitleNoMargin}>Your verified company Circle</Text>
+          <Text style={styles.cardHelper}>
+            Only approved organizations matching your verified company email appear here. No
+            coworker roster is shown.
           </Text>
-          {discoverError ? <Text accessibilityRole="alert" style={{ color: '#FFD0AA', lineHeight: 18, marginTop: 10 }}>{discoverError}</Text> : null}
+
+          {discoverError ? (
+            <Text accessibilityRole="alert" style={styles.warningText}>
+              {discoverError}
+            </Text>
+          ) : null}
+
           {!discoverError && availableCircles.length === 0 ? (
-            <Text style={{ color: '#A7A7AD', fontSize: 13, lineHeight: 19, marginTop: 10 }}>No approved Work Circle matches your verified email domain yet.</Text>
-          ) : availableCircles.map((circle) => (
-            <View key={circle.circleId} style={{ borderTopWidth: 1, borderTopColor: '#34343B', marginTop: 12, paddingTop: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.color.white, fontSize: 14, fontWeight: '800' }}>{circle.name ?? 'Organization'}</Text>
-                {circle.membershipStatus === 'approved' ? (
-                  <Text style={{ color: theme.color.teal, fontSize: 11, marginTop: 4 }}>Access approved · chat and shared rides are not enabled</Text>
-                ) : circle.membershipStatus === 'pending' ? (
-                  <Text style={{ color: '#D6C28C', fontSize: 11, marginTop: 4 }}>Membership request pending review</Text>
+            <Text style={styles.emptyText}>
+              No approved Work Circle matches your verified email domain yet.
+            </Text>
+          ) : (
+            availableCircles.map((circle) => (
+              <View key={circle.circleId} style={styles.discoverRow}>
+                <View style={styles.discoverCopy}>
+                  <Text style={styles.orgName}>{circle.name ?? 'Organization'}</Text>
+                  {circle.membershipStatus === 'approved' ? (
+                    <Text style={styles.approvedMeta}>
+                      Access approved · chat and shared rides are not enabled
+                    </Text>
+                  ) : circle.membershipStatus === 'pending' ? (
+                    <Text style={styles.pendingMeta}>Membership request pending review</Text>
+                  ) : null}
+                </View>
+                {circle.membershipStatus === 'not_requested' ||
+                circle.membershipStatus === 'rejected' ? (
+                  <SpringPressable
+                    onPress={() => void requestMembership(circle.circleId)}
+                    disabled={requestingCircleId === circle.circleId}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.smallCta, pressed && styles.pressed]}
+                  >
+                    {requestingCircleId === circle.circleId ? (
+                      <ActivityIndicator size="small" color={theme.color.textOnAccent} />
+                    ) : (
+                      <Text style={styles.smallCtaText}>Request access</Text>
+                    )}
+                  </SpringPressable>
                 ) : null}
               </View>
-              {circle.membershipStatus === 'not_requested' || circle.membershipStatus === 'rejected' ? (
-                <SpringPressable onPress={() => void requestMembership(circle.circleId)} disabled={requestingCircleId === circle.circleId} accessibilityRole="button" style={{ minHeight: 48, paddingHorizontal: 12, borderRadius: 13, backgroundColor: theme.color.teal, alignItems: 'center', justifyContent: 'center' }}>
-                  {requestingCircleId === circle.circleId ? <ActivityIndicator color={theme.color.white} /> : <Text style={{ color: theme.color.white, fontSize: 12, fontWeight: '800' }}>Request access</Text>}
-                </SpringPressable>
-              ) : null}
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
-        <SpringPressable onPress={() => router.push('/work-circle-invite')} accessibilityRole="button" style={{ minHeight: 56, marginTop: 14, borderRadius: 16, backgroundColor: theme.color.teal, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 }}>
-          <Users size={19} color={theme.color.white} /><Text style={{ color: theme.color.white, fontSize: 15, fontWeight: '900' }}>Request organization access</Text>
+        <SpringPressable
+          onPress={() => router.push('/work-circle-invite')}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}
+        >
+          <Users size={18} color={theme.color.textOnAccent} />
+          <Text style={styles.primaryCtaText}>Request organization access</Text>
         </SpringPressable>
-        <Text style={{ color: '#A7A7AD', fontSize: 12, lineHeight: 18, marginTop: 14 }}>
-          A pending request does not verify employment, reveal coworkers, or create a ride. Organization review is required before members can be shown.
+
+        <Text style={styles.footnote}>
+          A pending request does not verify employment, reveal coworkers, or create a ride.
+          Organization review is required before members can be shown.
         </Text>
       </ScrollView>
       <StickyBottomNavigation />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.color.surface
+  },
+  scroll: {
+    width: '100%'
+  },
+  content: {
+    width: '100%',
+    paddingHorizontal: theme.layout.screenPadding,
+    paddingTop: 16,
+    paddingBottom: 112
+  },
+  title: {
+    color: theme.color.white,
+    fontSize: 28,
+    lineHeight: 34,
+    fontFamily: theme.font.bold,
+    marginTop: 20
+  },
+  subtitle: {
+    color: theme.color.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: theme.font.regular,
+    marginTop: 6
+  },
+  card: {
+    marginTop: 16,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.surfaceRaised,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    padding: 16
+  },
+  cardIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.tealSoft,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  cardTitle: {
+    color: theme.color.white,
+    fontSize: 16,
+    fontFamily: theme.font.bold,
+    marginTop: 12
+  },
+  cardTitleNoMargin: {
+    color: theme.color.white,
+    fontSize: 16,
+    fontFamily: theme.font.bold
+  },
+  cardHelper: {
+    color: theme.color.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: theme.font.regular,
+    marginTop: 5
+  },
+  loader: {
+    marginTop: 16
+  },
+  warningText: {
+    color: theme.color.orange,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: theme.font.semibold,
+    marginTop: 10
+  },
+  retryBtn: {
+    minHeight: 44,
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8
+  },
+  retryText: {
+    color: theme.color.teal,
+    fontSize: 13,
+    fontFamily: theme.font.bold
+  },
+  emptyText: {
+    color: theme.color.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: theme.font.regular,
+    marginTop: 10
+  },
+  rowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: theme.color.border,
+    marginTop: 12,
+    paddingTop: 12
+  },
+  orgName: {
+    color: theme.color.white,
+    fontSize: 15,
+    fontFamily: theme.font.bold
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6
+  },
+  statusLabel: {
+    color: theme.color.teal,
+    fontSize: 12,
+    fontFamily: theme.font.semibold,
+    flex: 1
+  },
+  discoverRow: {
+    borderTopWidth: 1,
+    borderTopColor: theme.color.border,
+    marginTop: 12,
+    paddingTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  discoverCopy: {
+    flex: 1
+  },
+  approvedMeta: {
+    color: theme.color.teal,
+    fontSize: 11,
+    fontFamily: theme.font.semibold,
+    marginTop: 4
+  },
+  pendingMeta: {
+    color: theme.color.orange,
+    fontSize: 11,
+    fontFamily: theme.font.semibold,
+    marginTop: 4
+  },
+  smallCta: {
+    minHeight: 42,
+    paddingHorizontal: 12,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.teal,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  smallCtaText: {
+    color: theme.color.textOnAccent,
+    fontSize: 12,
+    fontFamily: theme.font.bold
+  },
+  primaryCta: {
+    minHeight: 54,
+    marginTop: 16,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.teal,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9
+  },
+  primaryCtaText: {
+    color: theme.color.textOnAccent,
+    fontSize: 15,
+    fontFamily: theme.font.bold
+  },
+  footnote: {
+    color: theme.color.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: theme.font.regular,
+    marginTop: 14
+  },
+  pressed: {
+    opacity: 0.88
+  }
+});

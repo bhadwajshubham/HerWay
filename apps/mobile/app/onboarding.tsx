@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ChevronRight, ShieldCheck } from 'lucide-react-native';
-import { SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native';
+import { Check, ChevronRight, ShieldCheck } from 'lucide-react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   EmergencyContactRequestSchema,
@@ -111,178 +111,274 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surfaceDark }}>
+    <SafeAreaView style={styles.screen}>
       <ScrollView
-        contentContainerStyle={{
-          width: '100%',
-          maxWidth: 760,
-          alignSelf: 'center',
-          paddingHorizontal: 24,
-          paddingTop: 18,
-          paddingBottom: 112,
-          gap: 12
-        }}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 12
-          }}
-        >
-          <View
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 13,
-              backgroundColor: theme.color.surfaceDark,
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <ShieldCheck size={21} color={theme.color.white} strokeWidth={2.1} />
+        <View style={styles.topRow}>
+          <View style={styles.shieldBadge}>
+            <ShieldCheck size={20} color={theme.color.teal} strokeWidth={2.1} />
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: "#A7A7AD", fontSize: 12, fontWeight: '800' }}>
-              SETUP 1 OF 1
-            </Text>
-            <View
-              style={{
-                width: 72,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: '#D9E3E8',
-                marginTop: 6,
-                overflow: 'hidden'
-              }}
-            >
-              <View style={{ width: 72, height: 4, backgroundColor: theme.color.teal }} />
+          <View style={styles.progressCol}>
+            <Text style={styles.stepLabel}>SETUP 1 OF 1</Text>
+            <View style={styles.progressTrack}>
+              <View style={styles.progressFill} />
             </View>
           </View>
         </View>
-        <Text
-          accessibilityRole="header"
-          style={{
-            color: theme.color.white,
-            fontSize: 30,
-            lineHeight: 36,
-            fontWeight: '800',
-            letterSpacing: -0.8
-          }}
-        >
+
+        <Text accessibilityRole="header" style={styles.title}>
           Make it yours.
         </Text>
-        <Text style={{ color: "#A7A7AD", fontSize: 14, lineHeight: 21, marginBottom: 6 }}>
+        <Text style={styles.subtitle}>
           A few details help HerWay keep your ride personal and your trusted circle connected.
         </Text>
+
         <TextInput
           value={displayName}
           onChangeText={setDisplayName}
           placeholder="Profile name"
-          style={{
-            minHeight: 56,
-            borderWidth: 1,
-            borderColor: '#34343B',
-            borderRadius: 16,
-            paddingHorizontal: 16,
-            backgroundColor: theme.color.surfaceDarkRaised,
-            color: theme.color.white
-          }}
+          placeholderTextColor={theme.color.muted}
+          accessibilityLabel="Profile name"
+          style={styles.input}
         />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {(['en', 'hi', 'te'] as const).map((item) => (
-            <SpringPressable
-              key={item}
-              onPress={() => setLanguage(item)}
-              accessibilityRole="button"
-              style={{
-                flex: 1,
-                minHeight: 48,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: language === item ? theme.color.teal : '#34343B',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.color.surfaceDarkRaised
-              }}
-            >
-              <Text style={{ color: theme.color.white, fontWeight: '700' }}>
-                {item.toUpperCase()}
-              </Text>
-            </SpringPressable>
-          ))}
+
+        <View style={styles.langRow}>
+          {(['en', 'hi', 'te'] as const).map((item) => {
+            const active = language === item;
+            return (
+              <SpringPressable
+                key={item}
+                onPress={() => setLanguage(item)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={[styles.langChip, active && styles.langChipActive]}
+              >
+                <Text style={[styles.langText, active && styles.langTextActive]}>
+                  {item.toUpperCase()}
+                </Text>
+              </SpringPressable>
+            );
+          })}
         </View>
+
         <TextInput
           value={contactName}
           onChangeText={setContactName}
           placeholder="Trusted contact name"
-          style={{
-            minHeight: 56,
-            borderWidth: 1,
-            borderColor: '#34343B',
-            borderRadius: 16,
-            paddingHorizontal: 16,
-            backgroundColor: theme.color.surfaceDarkRaised,
-            color: theme.color.white
-          }}
+          placeholderTextColor={theme.color.muted}
+          accessibilityLabel="Trusted contact name"
+          style={styles.input}
         />
+
         <TextInput
           value={contactPhone}
           onChangeText={setContactPhone}
           keyboardType="phone-pad"
           placeholder="+91xxxxxxxxxx"
-          style={{
-            minHeight: 56,
-            borderWidth: 1,
-            borderColor: '#34343B',
-            borderRadius: 16,
-            paddingHorizontal: 16,
-            backgroundColor: theme.color.surfaceDarkRaised,
-            color: theme.color.white
-          }}
+          placeholderTextColor={theme.color.muted}
+          accessibilityLabel="Trusted contact phone number"
+          style={styles.input}
         />
+
         <SpringPressable
           onPress={() => setConsentGranted((value) => !value)}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: consentGranted }}
-          style={{
-            minHeight: 56,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: consentGranted ? theme.color.teal : '#34343B',
-            padding: 14,
-            backgroundColor: theme.color.surfaceDarkRaised
-          }}
+          style={[styles.consentCard, consentGranted && styles.consentCardActive]}
         >
-          <Text style={{ color: theme.color.white }}>
+          <View style={[styles.checkbox, consentGranted && styles.checkboxChecked]}>
+            {consentGranted ? <Check size={14} color={theme.color.textOnAccent} /> : null}
+          </View>
+          <Text style={styles.consentText}>
             I consent to account and service processing. I can revoke this consent later.
           </Text>
         </SpringPressable>
+
         <SpringPressable
           onPress={completeSetup}
           accessibilityRole="button"
-          style={({ pressed }) => ({
-            minHeight: 56,
-            borderRadius: 16,
-            backgroundColor: theme.color.orange,
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'row',
-            gap: 9,
-            opacity: pressed ? 0.88 : 1
-          })}
+          style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}
         >
-          <Text style={{ color: theme.color.white, fontSize: 15, fontWeight: '800' }}>
-            Complete setup
-          </Text>
-          <ChevronRight size={18} color={theme.color.white} strokeWidth={2} />
+          <Text style={styles.primaryCtaText}>Complete setup</Text>
+          <ChevronRight size={18} color={theme.color.textOnAccent} strokeWidth={2.2} />
         </SpringPressable>
-        <Text accessibilityRole="alert" style={{ color: theme.color.muted }}>
-          {status}
-        </Text>
+
+        {status ? (
+          <Text accessibilityRole="alert" style={styles.statusText}>
+            {status}
+          </Text>
+        ) : null}
       </ScrollView>
       <StickyBottomNavigation />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.color.surface
+  },
+  scroll: {
+    width: '100%'
+  },
+  content: {
+    width: '100%',
+    paddingHorizontal: theme.layout.screenPadding,
+    paddingTop: 18,
+    paddingBottom: 112,
+    gap: theme.layout.cardGap
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
+  shieldBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.color.tealSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  progressCol: {
+    alignItems: 'flex-end'
+  },
+  stepLabel: {
+    color: theme.color.muted,
+    fontSize: 11,
+    fontFamily: theme.font.bold,
+    letterSpacing: 0.5
+  },
+  progressTrack: {
+    width: 76,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.color.border,
+    marginTop: 6,
+    overflow: 'hidden'
+  },
+  progressFill: {
+    width: '100%',
+    height: 4,
+    backgroundColor: theme.color.teal
+  },
+  title: {
+    color: theme.color.white,
+    fontSize: 28,
+    lineHeight: 34,
+    fontFamily: theme.font.bold,
+    letterSpacing: -0.5
+  },
+  subtitle: {
+    color: theme.color.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: theme.font.regular,
+    marginBottom: 4
+  },
+  input: {
+    minHeight: 54,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    borderRadius: theme.radius.lg,
+    paddingHorizontal: 14,
+    backgroundColor: theme.color.surfaceRaised,
+    color: theme.color.white,
+    fontSize: 15,
+    fontFamily: theme.font.semibold
+  },
+  langRow: {
+    flexDirection: 'row',
+    gap: theme.layout.cardGap
+  },
+  langChip: {
+    flex: 1,
+    minHeight: theme.touchTarget,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.color.surfaceRaised
+  },
+  langChipActive: {
+    borderColor: theme.color.teal,
+    backgroundColor: theme.color.tealSoft
+  },
+  langText: {
+    color: theme.color.white,
+    fontSize: 13,
+    fontFamily: theme.font.bold
+  },
+  langTextActive: {
+    color: theme.color.teal
+  },
+  consentCard: {
+    minHeight: 56,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    padding: 14,
+    backgroundColor: theme.color.surfaceRaised,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12
+  },
+  consentCardActive: {
+    borderColor: theme.color.teal
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: theme.color.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1
+  },
+  checkboxChecked: {
+    borderColor: theme.color.teal,
+    backgroundColor: theme.color.teal
+  },
+  consentText: {
+    flex: 1,
+    color: theme.color.white,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: theme.font.regular
+  },
+  primaryCta: {
+    minHeight: 54,
+    marginTop: 4,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.teal,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8
+  },
+  primaryCtaText: {
+    color: theme.color.textOnAccent,
+    fontSize: 15,
+    fontFamily: theme.font.bold
+  },
+  statusText: {
+    color: theme.color.muted,
+    fontSize: 13,
+    fontFamily: theme.font.regular,
+    textAlign: 'center'
+  },
+  pressed: {
+    opacity: 0.88
+  }
+});

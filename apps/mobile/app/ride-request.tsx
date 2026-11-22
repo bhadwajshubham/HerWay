@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ArrowRight, MapPin, ShieldCheck, Users } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { RideRequestCreateSchema } from '@herway/shared';
@@ -19,11 +19,18 @@ const HITEC_PICKUP = {
 
 export default function RideRequestScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ destination?: string; lat?: string; lon?: string }>();
+  const params = useLocalSearchParams<{
+    destination?: string;
+    lat?: string;
+    lon?: string;
+    pickupMode?: string;
+  }>();
   const identity = useIdentity();
   const { configured, loading } = useAuth();
 
   const [pickup, setPickup] = useState(HITEC_PICKUP.name);
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [dropoff, setDropoff] = useState(params.destination ?? '');
   const [seats, setSeats] = useState(1);
   const [note, setNote] = useState('');
@@ -32,7 +39,26 @@ export default function RideRequestScreen() {
 
   useEffect(() => {
     if (params.destination) setDropoff(params.destination);
-  }, [params.destination]);
+    if (params.pickupMode) setUseCurrentLocation(params.pickupMode === 'current');
+  }, [params.destination, params.pickupMode]);
+
+  useEffect(() => {
+    if (params.pickupMode === 'current' && params.lat && params.lon) {
+      const lat = Number(params.lat);
+      const lon = Number(params.lon);
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        setCurrentLocation({ lat, lon });
+      }
+    }
+  }, [params.lat, params.lon, params.pickupMode]);
+
+  useEffect(() => {
+    if (useCurrentLocation && currentLocation) {
+      setPickup('Current location');
+    } else if (!useCurrentLocation) {
+      setPickup(HITEC_PICKUP.name);
+    }
+  }, [useCurrentLocation, currentLocation]);
 
   const submit = useCallback(async () => {
     if (busy) return;
@@ -42,14 +68,19 @@ export default function RideRequestScreen() {
     }
     const lat = Number(params.lat);
     const lon = Number(params.lon);
+    const pickupPoint =
+      useCurrentLocation && currentLocation
+        ? { lat: currentLocation.lat, lng: currentLocation.lon }
+        : HITEC_PICKUP.point;
+    const dropoffPoint =
+      Number.isFinite(lat) && lat !== 0 && Number.isFinite(lon) && lon !== 0
+        ? { lat, lng: lon }
+        : { lat: 17.2403, lng: 78.4294 };
     const parsed = RideRequestCreateSchema.safeParse({
       pickup: pickup.trim(),
       dropoff: dropoff.trim(),
-      pickupPoint: HITEC_PICKUP.point,
-      dropoffPoint: {
-        lat: Number.isFinite(lat) && lat !== 0 ? lat : 17.2403,
-        lng: Number.isFinite(lon) && lon !== 0 ? lon : 78.4294
-      },
+      pickupPoint,
+      dropoffPoint,
       rideCategory: 'standard',
       seats,
       womenOnly: true,
@@ -72,121 +103,90 @@ export default function RideRequestScreen() {
     } finally {
       setBusy(false);
     }
-  }, [busy, dropoff, identity, note, params.lat, params.lon, pickup, router, seats]);
+  }, [
+    busy,
+    currentLocation,
+    dropoff,
+    identity,
+    note,
+    params.lat,
+    params.lon,
+    pickup,
+    router,
+    seats,
+    useCurrentLocation
+  ]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surfaceDark }}>
+    <SafeAreaView style={styles.screen}>
       <ScrollView
-        style={{ width: '100%' }}
-        contentContainerStyle={{
-          width: '100%',
-          maxWidth: 760,
-          alignSelf: 'center',
-          padding: 20,
-          paddingBottom: 112
-        }}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <ScreenHeader badge="REQUEST A RIDE" tone="orange" />
 
         <FadeIn delay={40}>
-          <Text
-            accessibilityRole="header"
-            style={{
-              color: theme.color.white,
-              fontSize: 32,
-              lineHeight: 38,
-              fontWeight: '900',
-              letterSpacing: -0.8,
-              marginTop: 22
-            }}
-          >
+          <Text accessibilityRole="header" style={styles.title}>
             Who is coming{`\n`}with you?
           </Text>
-          <Text style={{ color: '#A7A7AD', fontSize: 14, lineHeight: 21, marginTop: 8 }}>
+          <Text style={styles.subtitle}>
             Women-only by default. A verified woman captain can accept this ride.
           </Text>
         </FadeIn>
 
         <FadeIn delay={90}>
-          <View
-            style={{
-              marginTop: 22,
-              borderRadius: 22,
-              borderWidth: 1,
-              borderColor: '#34343B',
-              backgroundColor: theme.color.surfaceDarkRaised,
-              padding: 16
-            }}
-          >
-            <Text style={{ color: '#A7A7AD', fontSize: 12, fontWeight: '800' }}>PICKUP</Text>
-            <View
-              style={{
-                marginTop: 8,
-                minHeight: 52,
-                borderRadius: 14,
-                backgroundColor: '#0F0F12',
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 12
-              }}
-            >
+          <View style={styles.card}>
+            <Text style={styles.microLabel}>PICKUP</Text>
+            <View style={styles.locToggleRow}>
+              <SpringPressable
+                onPress={() => setUseCurrentLocation((value) => !value)}
+                accessibilityRole="button"
+                accessibilityLabel="Use current location as pickup"
+                style={[styles.locBtn, useCurrentLocation && styles.locBtnActive]}
+              >
+                <MapPin
+                  size={18}
+                  color={useCurrentLocation ? theme.color.teal : theme.color.white}
+                />
+              </SpringPressable>
+              <Text style={styles.locLabel}>
+                {useCurrentLocation ? 'Using current location' : 'Use current location'}
+              </Text>
+            </View>
+
+            <View style={styles.inputBox}>
               <MapPin size={18} color={theme.color.teal} />
               <TextInput
                 value={pickup}
                 onChangeText={setPickup}
                 accessibilityLabel="Pickup location"
-                style={{
-                  flex: 1,
-                  marginLeft: 10,
-                  color: theme.color.white,
-                  fontSize: 15,
-                  fontWeight: '700'
-                }}
+                style={styles.inputField}
               />
             </View>
 
-            <Text style={{ color: '#A7A7AD', fontSize: 12, fontWeight: '800', marginTop: 16 }}>
-              DROP-OFF
-            </Text>
-            <View
-              style={{
-                marginTop: 8,
-                minHeight: 52,
-                borderRadius: 14,
-                backgroundColor: '#0F0F12',
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 12
-              }}
-            >
+            <Text style={[styles.microLabel, styles.spacedLabel]}>DROP-OFF</Text>
+            <View style={styles.inputBox}>
               <MapPin size={18} color={theme.color.orange} />
               <TextInput
                 value={dropoff}
                 onChangeText={setDropoff}
                 placeholder="Where to?"
-                placeholderTextColor="#6C6C75"
+                placeholderTextColor={theme.color.muted}
                 accessibilityLabel="Drop-off location"
-                style={{
-                  flex: 1,
-                  marginLeft: 10,
-                  color: theme.color.white,
-                  fontSize: 15,
-                  fontWeight: '700'
-                }}
+                style={styles.inputField}
               />
             </View>
           </View>
         </FadeIn>
 
         <FadeIn delay={140}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 22 }}>
+          <View style={styles.seatsHeader}>
             <Users size={18} color={theme.color.white} />
-            <Text style={{ color: theme.color.white, fontSize: 15, fontWeight: '800' }}>
-              Seats needed
-            </Text>
+            <Text style={styles.seatsTitle}>Seats needed</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+          <View style={styles.seatsRow}>
             {[1, 2, 3, 4].map((count) => {
               const active = seats === count;
               return (
@@ -195,26 +195,9 @@ export default function RideRequestScreen() {
                   onPress={() => setSeats(count)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  style={{
-                    width: 56,
-                    height: 52,
-                    borderRadius: 14,
-                    borderWidth: active ? 2 : 1,
-                    borderColor: active ? theme.color.teal : '#34343B',
-                    backgroundColor: active ? theme.color.tealSoft : theme.color.surfaceDarkRaised,
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
+                  style={[styles.seatChip, active && styles.seatChipActive]}
                 >
-                  <Text
-                    style={{
-                      color: active ? theme.color.teal : theme.color.white,
-                      fontSize: 17,
-                      fontWeight: '900'
-                    }}
-                  >
-                    {count}
-                  </Text>
+                  <Text style={[styles.seatText, active && styles.seatTextActive]}>{count}</Text>
                 </SpringPressable>
               );
             })}
@@ -222,7 +205,7 @@ export default function RideRequestScreen() {
         </FadeIn>
 
         <FadeIn delay={180}>
-          <Text style={{ color: '#A7A7AD', fontSize: 12, fontWeight: '800', marginTop: 22 }}>
+          <Text style={[styles.microLabel, styles.spacedLabel]}>
             NOTE FOR YOUR CAPTAIN (OPTIONAL)
           </Text>
           <TextInput
@@ -230,75 +213,42 @@ export default function RideRequestScreen() {
             onChangeText={setNote}
             maxLength={240}
             placeholder="e.g. Near the main gate, wearing a blue jacket"
-            placeholderTextColor="#6C6C75"
+            placeholderTextColor={theme.color.muted}
             accessibilityLabel="Note for captain"
-            style={{
-              marginTop: 8,
-              minHeight: 52,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: '#34343B',
-              backgroundColor: theme.color.surfaceDarkRaised,
-              color: theme.color.white,
-              paddingHorizontal: 14,
-              fontSize: 15
-            }}
+            style={styles.noteInput}
           />
         </FadeIn>
 
         <FadeIn delay={220}>
-          <View
-            style={{
-              marginTop: 18,
-              borderRadius: 16,
-              backgroundColor: '#11283A',
-              borderWidth: 1,
-              borderColor: '#21495A',
-              padding: 14,
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}
-          >
-            <ShieldCheck size={20} color="#9FCFC6" />
-            <Text style={{ flex: 1, marginLeft: 10, color: '#E8EEF2', fontSize: 13, fontWeight: '700' }}>
-              Women-only ride. Your captain must be a verified woman.
+          <View style={styles.assuranceBanner}>
+            <ShieldCheck size={20} color={theme.color.teal} />
+            <Text style={styles.assuranceText}>
+              Women-only ride · Verified woman captain · 4-digit Start PIN
             </Text>
           </View>
         </FadeIn>
 
         {!configured && !loading ? (
-          <Text style={{ color: theme.color.danger, marginTop: 12, fontSize: 13 }}>
-            Firebase is not configured in this build.
-          </Text>
+          <Text style={styles.configError}>Firebase is not configured in this build.</Text>
         ) : null}
 
         <SpringPressable
           onPress={() => void submit()}
           disabled={busy}
           accessibilityRole="button"
-          style={({ pressed }) => ({
-            minHeight: 58,
-            marginTop: 18,
-            borderRadius: 16,
-            backgroundColor: theme.color.orange,
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'row',
-            gap: 10,
-            opacity: pressed || busy ? 0.85 : 1
-          })}
+          style={({ pressed }) => [
+            styles.submitBtn,
+            (pressed || busy) && styles.pressed
+          ]}
         >
-          <Text style={{ color: theme.color.white, fontSize: 16, fontWeight: '900' }}>
+          <Text style={styles.submitBtnText}>
             {busy ? 'Requesting...' : 'Request women-only ride'}
           </Text>
-          <ArrowRight size={19} color={theme.color.white} />
+          <ArrowRight size={19} color={theme.color.textOnAccent} />
         </SpringPressable>
 
         {status ? (
-          <Text
-            accessibilityRole="alert"
-            style={{ color: theme.color.danger, marginTop: 12, fontSize: 13, textAlign: 'center' }}
-          >
+          <Text accessibilityRole="alert" style={styles.statusError}>
             {status}
           </Text>
         ) : null}
@@ -307,3 +257,193 @@ export default function RideRequestScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.color.surface
+  },
+  scroll: {
+    width: '100%'
+  },
+  content: {
+    width: '100%',
+    paddingHorizontal: theme.layout.screenPadding,
+    paddingTop: 16,
+    paddingBottom: 112
+  },
+  title: {
+    color: theme.color.white,
+    fontSize: 30,
+    lineHeight: 36,
+    fontFamily: theme.font.bold,
+    letterSpacing: -0.6,
+    marginTop: 20
+  },
+  subtitle: {
+    color: theme.color.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: theme.font.regular,
+    marginTop: 6
+  },
+  card: {
+    marginTop: 20,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surfaceRaised,
+    padding: 16
+  },
+  microLabel: {
+    color: theme.color.muted,
+    fontSize: 11,
+    fontFamily: theme.font.bold,
+    letterSpacing: 0.4
+  },
+  spacedLabel: {
+    marginTop: 16
+  },
+  locToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8
+  },
+  locBtn: {
+    minHeight: 44,
+    width: 44,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surface,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  locBtnActive: {
+    borderColor: theme.color.teal,
+    backgroundColor: theme.color.tealSoft
+  },
+  locLabel: {
+    color: theme.color.muted,
+    fontSize: 12,
+    fontFamily: theme.font.semibold
+  },
+  inputBox: {
+    marginTop: 10,
+    minHeight: 50,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12
+  },
+  inputField: {
+    flex: 1,
+    marginLeft: 10,
+    color: theme.color.white,
+    fontSize: 14,
+    fontFamily: theme.font.semibold
+  },
+  seatsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 20
+  },
+  seatsTitle: {
+    color: theme.color.white,
+    fontSize: 15,
+    fontFamily: theme.font.bold
+  },
+  seatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10
+  },
+  seatChip: {
+    width: 54,
+    height: 48,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  seatChipActive: {
+    borderWidth: 2,
+    borderColor: theme.color.teal,
+    backgroundColor: theme.color.tealSoft
+  },
+  seatText: {
+    color: theme.color.white,
+    fontSize: 16,
+    fontFamily: theme.font.bold
+  },
+  seatTextActive: {
+    color: theme.color.teal
+  },
+  noteInput: {
+    marginTop: 8,
+    minHeight: 50,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surfaceRaised,
+    color: theme.color.white,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    fontFamily: theme.font.regular
+  },
+  assuranceBanner: {
+    marginTop: 18,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.tealSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.35)',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  assuranceText: {
+    flex: 1,
+    color: theme.color.white,
+    fontSize: 12,
+    fontFamily: theme.font.bold
+  },
+  configError: {
+    color: theme.color.danger,
+    marginTop: 12,
+    fontSize: 13,
+    fontFamily: theme.font.semibold
+  },
+  submitBtn: {
+    minHeight: 54,
+    marginTop: 18,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.teal,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 9
+  },
+  submitBtnText: {
+    color: theme.color.textOnAccent,
+    fontSize: 15,
+    fontFamily: theme.font.bold
+  },
+  statusError: {
+    color: theme.color.danger,
+    marginTop: 12,
+    fontSize: 13,
+    fontFamily: theme.font.semibold,
+    textAlign: 'center'
+  },
+  pressed: {
+    opacity: 0.88
+  }
+});

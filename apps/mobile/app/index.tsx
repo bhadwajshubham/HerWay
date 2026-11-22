@@ -1,6 +1,8 @@
-import { SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   Briefcase,
+  Building2,
+  CarFront,
   GraduationCap,
   Home,
   MapPin,
@@ -8,8 +10,6 @@ import {
   Search,
   Share2,
   ShieldCheck,
-  Building2,
-  CarFront,
   Siren,
   UserRound
 } from 'lucide-react-native';
@@ -20,7 +20,7 @@ import { StickyBottomNavigation } from '../src/components/StickyBottomNavigation
 
 const quickActions = [
   { label: 'Home', detail: 'Saved place', Icon: Home },
-  { label: 'Work', detail: 'Saved place', Icon: Briefcase },
+  { label: 'Work', detail: 'Mindspace / HITEC', Icon: Briefcase },
   { label: 'Campus', detail: 'Partner campus', Icon: GraduationCap },
   { label: 'More', detail: 'Browse', Icon: MoreHorizontal }
 ] as const;
@@ -29,28 +29,16 @@ export default function Index() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.color.surfaceDark }}>
+    <SafeAreaView style={styles.screen}>
       <ScrollView
-        style={{ width: '100%' }}
-        contentContainerStyle={{
-          width: '100%',
-          maxWidth: 760,
-          alignSelf: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 18,
-          paddingBottom: 112
-        }}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-        >
+        <View style={styles.headerRow}>
           <View>
-            <Text style={{ color: '#A7A7AD', fontSize: 14 }}>Welcome back</Text>
-            <Text
-              accessibilityRole="header"
-              style={{ color: theme.color.orange, fontSize: 31, fontWeight: '900', marginTop: 2 }}
-            >
+            <Text style={styles.greeting}>Welcome back</Text>
+            <Text accessibilityRole="header" style={styles.brandTitle}>
               HerWay
             </Text>
           </View>
@@ -58,28 +46,13 @@ export default function Index() {
             onPress={() => router.push('/community')}
             accessibilityRole="button"
             accessibilityLabel="Open community"
-            style={{
-              borderRadius: 999,
-              backgroundColor: theme.color.tealSoft,
-              paddingHorizontal: 12,
-              paddingVertical: 7
-            }}
+            style={({ pressed }) => [styles.circleBadge, pressed && styles.pressed]}
           >
-            <Text style={{ color: theme.color.teal, fontSize: 12, fontWeight: '800' }}>CIRCLE</Text>
+            <Text style={styles.circleBadgeText}>CIRCLE</Text>
           </SpringPressable>
         </View>
 
-        <Text
-          accessibilityRole="header"
-          style={{
-            color: theme.color.orange,
-            fontSize: 40,
-            lineHeight: 43,
-            fontWeight: '900',
-            letterSpacing: -0.8,
-            marginTop: 28
-          }}
-        >
+        <Text accessibilityRole="header" style={styles.heroHeadline}>
           Where are you{`\n`}going?
         </Text>
 
@@ -87,57 +60,27 @@ export default function Index() {
           onPress={() => router.push('/destination')}
           accessibilityRole="button"
           accessibilityLabel="Choose destination"
-          style={({ pressed }) => ({
-            minHeight: 64,
-            marginTop: 16,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: pressed ? theme.color.orange : '#34343B',
-            backgroundColor: '#18181C',
-            justifyContent: 'center',
-            paddingHorizontal: 18,
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.28,
-            shadowRadius: 14,
-            elevation: 8
-          })}
+          style={({ pressed }) => [styles.searchBox, pressed && styles.searchBoxPressed]}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Search size={20} color={theme.color.orange} />
-            <Text style={{ color: '#F5F5F7', fontSize: 16, fontWeight: '800' }}>Where to?</Text>
-          </View>
+          <Search size={19} color={theme.color.teal} />
+          <Text style={styles.searchPlaceholder}>Search destination or office corridor</Text>
         </SpringPressable>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
+        <View style={styles.quickRow}>
           {quickActions.map((action) => (
             <SpringPressable
               key={action.label}
               onPress={() => router.push('/destination')}
               accessibilityRole="button"
-              style={{ alignItems: 'center', width: 72 }}
+              style={({ pressed }) => [styles.quickItem, pressed && styles.pressed]}
             >
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
-                  backgroundColor: '#18181C',
-                  borderWidth: 1,
-                  borderColor: '#34343B',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <action.Icon size={24} color={theme.color.orange} />
+              <View style={styles.quickIconWrap}>
+                <action.Icon size={21} color={theme.color.teal} />
               </View>
-              <Text
-                numberOfLines={1}
-                style={{ color: '#F5F5F7', fontSize: 13, fontWeight: '800', marginTop: 8 }}
-              >
+              <Text numberOfLines={1} style={styles.quickLabel}>
                 {action.label}
               </Text>
-              <Text numberOfLines={1} style={{ color: '#9D9DA6', fontSize: 11, marginTop: 2 }}>
+              <Text numberOfLines={1} style={styles.quickDetail}>
                 {action.detail}
               </Text>
             </SpringPressable>
@@ -147,179 +90,79 @@ export default function Index() {
         <SpringPressable
           onPress={() => router.push('/trip-live')}
           accessibilityRole="button"
-          style={({ pressed }) => ({
-            marginTop: 26,
-            borderRadius: 22,
-            backgroundColor: '#18181C',
-            borderWidth: 1,
-            borderColor: '#34343B',
-            padding: 18,
-            opacity: pressed ? 0.92 : 1,
-            shadowColor: '#000000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.24,
-            shadowRadius: 12,
-            elevation: 6
-          })}
+          style={({ pressed }) => [styles.tripCard, pressed && styles.pressed]}
         >
-          <View
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.color.white, fontSize: 17, fontWeight: '800' }}>
-                Trip preview
-              </Text>
-              <Text style={{ color: '#BBD0DA', fontSize: 13, marginTop: 5 }}>No active trip</Text>
+          <View style={styles.tripCardRow}>
+            <View style={styles.tripCopy}>
+              <Text style={styles.tripTitle}>Live trip & PIN</Text>
+              <Text style={styles.tripSub}>No active trip · OSRM route & start PIN</Text>
             </View>
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: theme.color.orange,
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <MapPin size={24} color={theme.color.white} />
+            <View style={styles.tripPinIcon}>
+              <MapPin size={22} color={theme.color.textOnAccent} />
             </View>
           </View>
         </SpringPressable>
 
-        <Text
-          style={{
-            color: '#F5F5F7',
-            fontSize: 17,
-            fontWeight: '900',
-            marginTop: 26,
-            marginBottom: 12
-          }}
-        >
-          Safety & confidence
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          <SpringPressable
-            onPress={() => router.push('/safety')}
-            accessibilityRole="button"
-            style={{
-              width: '48%',
-              minHeight: 76,
-              borderRadius: 18,
-              backgroundColor: '#18181C',
-              borderWidth: 1,
-              borderColor: '#34343B',
-              justifyContent: 'center',
-              paddingHorizontal: 14
-            }}
-          >
-            <Siren size={21} color={theme.color.orange} />
-            <Text style={{ color: '#F5F5F7', fontSize: 14, fontWeight: '800', marginTop: 7 }}>
-              Safety & SOS
-            </Text>
-          </SpringPressable>
+        <Text style={styles.sectionTitle}>Commute & safety</Text>
+
+        <View style={styles.grid}>
           <SpringPressable
             onPress={() => router.push('/ride-share')}
             accessibilityRole="button"
-            style={{
-              width: '48%',
-              minHeight: 76,
-              borderRadius: 18,
-              backgroundColor: '#18181C',
-              borderWidth: 1,
-              borderColor: '#34343B',
-              justifyContent: 'center',
-              paddingHorizontal: 14
-            }}
+            style={({ pressed }) => [styles.tileCard, pressed && styles.pressed]}
           >
-            <Share2 size={21} color={theme.color.teal} />
-            <Text style={{ color: '#F5F5F7', fontSize: 14, fontWeight: '800', marginTop: 7 }}>
-              Share & split
-            </Text>
+            <Share2 size={20} color={theme.color.teal} />
+            <Text style={styles.tileTitle}>Daily commute pool</Text>
+            <Text style={styles.tileSub}>Carpool & scooty shifts</Text>
           </SpringPressable>
+
           <SpringPressable
-            onPress={() => router.push('/captain')}
+            onPress={() => router.push('/safety')}
             accessibilityRole="button"
-            style={{
-              width: '48%',
-              minHeight: 76,
-              borderRadius: 18,
-              backgroundColor: '#18181C',
-              borderWidth: 1,
-              borderColor: '#34343B',
-              justifyContent: 'center',
-              paddingHorizontal: 14
-            }}
+            style={({ pressed }) => [styles.tileCard, pressed && styles.pressed]}
           >
-            <CarFront size={21} color={theme.color.orange} />
-            <Text style={{ color: '#F5F5F7', fontSize: 14, fontWeight: '800', marginTop: 7 }}>
-              Drive with HerWay
-            </Text>
+            <Siren size={20} color={theme.color.orange} />
+            <Text style={styles.tileTitle}>Safety & SOS</Text>
+            <Text style={styles.tileSub}>112 dialer & SOS log</Text>
           </SpringPressable>
+
           <SpringPressable
             onPress={() => router.push('/work-circle')}
             accessibilityRole="button"
-            style={{
-              width: '48%',
-              minHeight: 76,
-              borderRadius: 18,
-              backgroundColor: '#18181C',
-              borderWidth: 1,
-              borderColor: '#34343B',
-              justifyContent: 'center',
-              paddingHorizontal: 14
-            }}
+            style={({ pressed }) => [styles.tileCard, pressed && styles.pressed]}
           >
-            <Building2 size={21} color="#9FCFC6" />
-            <Text style={{ color: '#F5F5F7', fontSize: 14, fontWeight: '800', marginTop: 7 }}>
-              Work Circle
-            </Text>
+            <Building2 size={20} color={theme.color.teal} />
+            <Text style={styles.tileTitle}>Work Circle</Text>
+            <Text style={styles.tileSub}>Verified company access</Text>
           </SpringPressable>
+
+          <SpringPressable
+            onPress={() => router.push('/captain')}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.tileCard, pressed && styles.pressed]}
+          >
+            <CarFront size={20} color={theme.color.orange} />
+            <Text style={styles.tileTitle}>Drive with HerWay</Text>
+            <Text style={styles.tileSub}>Captain dispatch & PIN</Text>
+          </SpringPressable>
+
           <SpringPressable
             onPress={() => router.push('/profile')}
             accessibilityRole="button"
-            style={{
-              width: '48%',
-              minHeight: 76,
-              borderRadius: 18,
-              backgroundColor: '#25232B',
-              borderWidth: 1,
-              borderColor: '#46414F',
-              justifyContent: 'center',
-              paddingHorizontal: 14
-            }}
+            style={({ pressed }) => [styles.tileCard, styles.fullTile, pressed && styles.pressed]}
           >
-            <UserRound size={21} color="#CFC5EC" />
-            <Text style={{ color: '#F5F5F7', fontSize: 14, fontWeight: '800', marginTop: 7 }}>
-              My profile
-            </Text>
+            <UserRound size={20} color={theme.color.teal} />
+            <Text style={styles.tileTitle}>My profile & account</Text>
+            <Text style={styles.tileSub}>Preferences, verification, and session</Text>
           </SpringPressable>
         </View>
 
-        <View
-          style={{
-            marginTop: 18,
-            borderRadius: 18,
-            backgroundColor: '#11283A',
-            borderWidth: 1,
-            borderColor: '#21495A',
-            padding: 16
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-            <ShieldCheck size={20} color="#9FCFC6" />
-            <Text
-              style={{
-                flex: 1,
-                marginLeft: 10,
-                color: '#E8EEF2',
-                fontSize: 13,
-                lineHeight: 19,
-                fontWeight: '700'
-              }}
-            >
-              All rides are women-only. Captains are verified before they can accept a request.
-            </Text>
-          </View>
+        <View style={styles.assuranceBanner}>
+          <ShieldCheck size={20} color={theme.color.teal} />
+          <Text style={styles.assuranceText}>
+            Women-only commute pooling and ride requests with PIN verification and live route
+            monitoring.
+          </Text>
         </View>
       </ScrollView>
 
@@ -327,3 +170,206 @@ export default function Index() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.color.surface
+  },
+  scroll: {
+    width: '100%'
+  },
+  content: {
+    width: '100%',
+    paddingHorizontal: theme.layout.screenPadding,
+    paddingTop: 16,
+    paddingBottom: 112
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  greeting: {
+    color: theme.color.muted,
+    fontSize: 13,
+    fontFamily: theme.font.regular
+  },
+  brandTitle: {
+    color: theme.color.orange,
+    fontSize: 28,
+    lineHeight: 34,
+    fontFamily: theme.font.bold,
+    marginTop: 2
+  },
+  circleBadge: {
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.color.tealSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.35)',
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  circleBadgeText: {
+    color: theme.color.teal,
+    fontSize: 11,
+    fontFamily: theme.font.bold,
+    letterSpacing: 0.6
+  },
+  heroHeadline: {
+    color: theme.color.white,
+    fontSize: 36,
+    lineHeight: 42,
+    fontFamily: theme.font.bold,
+    letterSpacing: -0.6,
+    marginTop: 24
+  },
+  searchBox: {
+    minHeight: 58,
+    marginTop: 16,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surfaceRaised,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    gap: 10
+  },
+  searchBoxPressed: {
+    borderColor: theme.color.teal
+  },
+  searchPlaceholder: {
+    color: theme.color.white,
+    fontSize: 15,
+    fontFamily: theme.font.semibold,
+    flex: 1
+  },
+  quickRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 18
+  },
+  quickItem: {
+    alignItems: 'center',
+    flex: 1
+  },
+  quickIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.color.surfaceRaised,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  quickLabel: {
+    color: theme.color.white,
+    fontSize: 12,
+    fontFamily: theme.font.bold,
+    marginTop: 7
+  },
+  quickDetail: {
+    color: theme.color.muted,
+    fontSize: 10,
+    fontFamily: theme.font.regular,
+    marginTop: 2
+  },
+  tripCard: {
+    marginTop: 22,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.surfaceRaised,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    padding: 16
+  },
+  tripCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  tripCopy: {
+    flex: 1
+  },
+  tripTitle: {
+    color: theme.color.white,
+    fontSize: 16,
+    fontFamily: theme.font.bold
+  },
+  tripSub: {
+    color: theme.color.muted,
+    fontSize: 12,
+    fontFamily: theme.font.regular,
+    marginTop: 4
+  },
+  tripPinIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: theme.color.teal,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  sectionTitle: {
+    color: theme.color.white,
+    fontSize: 17,
+    fontFamily: theme.font.bold,
+    marginTop: 24,
+    marginBottom: 12
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.layout.cardGap
+  },
+  tileCard: {
+    width: '48.2%',
+    minHeight: 84,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.surfaceRaised,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
+  fullTile: {
+    width: '100%'
+  },
+  tileTitle: {
+    color: theme.color.white,
+    fontSize: 14,
+    fontFamily: theme.font.bold,
+    marginTop: 8
+  },
+  tileSub: {
+    color: theme.color.muted,
+    fontSize: 11,
+    fontFamily: theme.font.regular,
+    marginTop: 2
+  },
+  assuranceBanner: {
+    marginTop: 16,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.color.tealSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.3)',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10
+  },
+  assuranceText: {
+    flex: 1,
+    color: theme.color.white,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: theme.font.semibold
+  },
+  pressed: {
+    opacity: 0.88
+  }
+});

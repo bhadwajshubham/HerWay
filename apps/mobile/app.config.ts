@@ -20,11 +20,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: variant === 'driver' ? 'HerWay Captain' : 'HerWay',
     slug: variant === 'driver' ? 'herway-captain' : 'herway',
     scheme: variant === 'driver' ? 'herway-driver' : 'herway',
-    android: {
+   android: {
       package: variant === 'driver' ? 'com.herway.herWay.captain' : 'com.herway.her_way',
       googleServicesFile: './firebase/google-services.json',
-      adaptiveIcon: { backgroundColor: '#0B1F33' }
+      adaptiveIcon: { backgroundColor: '#0B1F33' },
+      config: {
+        googleMaps: {
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY
+        }
+      }
     },
+    
     ios: {
       bundleIdentifier: variant === 'driver' ? 'com.herway.herWay.captain' : 'com.herway.herWay',
       googleServicesFile: './firebase/GoogleService-Info.plist'
